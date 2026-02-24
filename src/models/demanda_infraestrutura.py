@@ -1,4 +1,5 @@
 from src.models.demanda import Demanda
+from core.configuracoes import Configuracoes
 
 class DemandaInfraestrutura(Demanda):
     """
@@ -10,12 +11,13 @@ class DemandaInfraestrutura(Demanda):
         super().__init__(id_demanda, descricao, prioridade, solicitante)
         self.__custo_estimado = custo_estimado
         self.__localizacao_demanda = localizacao_demanda
+        self.config = Configuracoes
 
     def processar_solicitacao(self, usuario):
         if self.id_municipio != usuario.id_municipio: 
             print(f"Acesso negado! o usuário {usuario.nome} não pertence a esse município") 
             return 
-        if self.__custo_estimado > 100_000: 
+        if self.__custo_estimado > self.config.LIMITE_CUSTO_DEMANDA: 
             print(f"O custo estimado é maior do que o disponível, a obra entrará em processo de licitação")
             self.atualizar_status ("EM LICITAÇÃO")
         else: 
@@ -24,3 +26,4 @@ class DemandaInfraestrutura(Demanda):
 
         self.emitir_notificacao_critica()
         self.atualizar(usuario)
+
