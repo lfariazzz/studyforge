@@ -9,15 +9,18 @@ a todos os perfis (Professor, Aluno, Gestor e Secretario). Não deve ser
 instanciada diretamente.
 """
 class Usuario(ABC):
-    def __init__(self, nome, cpf, email, senha, telefone, data_nascimento, status=True):
-        self._id = None 
+    _contador_id = 1
+    def __init__(self, nome, cpf, email, senha, telefone, data_nascimento):
+        self._id = Usuario._contador_id
+        Usuario._contador_id += 1
         self.nome = nome
         self.cpf = cpf
         self.email = email
         self.senha = senha
         self.telefone = telefone
         self.data_nascimento = data_nascimento
-        self.status = status
+        self._login = False
+        self._status = True
 
     #-----------------
     #GETTERS E SETTERS
@@ -78,7 +81,7 @@ class Usuario(ABC):
     def senha(self):
         return self._senha
     
-    @senha.setter
+    @senha.setter   
     def senha(self, valor):
         if not isinstance(valor, str):
             raise TypeError("Erro: A senha deve ser uma string!")
@@ -103,15 +106,10 @@ class Usuario(ABC):
     def telefone(self, valor):
         if not isinstance(valor, str):
             raise TypeError("Erro: O telefone deve ser uma string!")
-        
-        tel_limpo = valor.replace("(", "").replace(")", "").replace("-", "").replace(" ", "").replace("-", "")
-
-        if not tel_limpo.isdigit():
-            raise ValueError("Erro: O telefone deve conter apenas números!")
+        tel_limpo = re.sub(r'\D', '', valor)
         if len(tel_limpo) not in [10, 11]:
             raise ValueError("Erro: O telefone deve conter 10 ou 11 dígitos!")
-        else:
-            self._telefone = tel_limpo
+        self._telefone = tel_limpo
     
     @property
     def data_nascimento(self):
@@ -121,10 +119,8 @@ class Usuario(ABC):
     def data_nascimento(self, valor):
         if not isinstance(valor, str):
             raise TypeError("Erro: A data deve ser uma string no formato DD/MM/AAAA!")
-        
         try:
             data_convertida = datetime.strptime(valor, "%d/%m/%Y")
-
             if data_convertida > datetime.now():
                 raise ValueError("Erro: Data de nascimento inválida!")
             self._data_nascimento = data_convertida
@@ -134,14 +130,11 @@ class Usuario(ABC):
         
     @property
     def status(self):
-        return "Ativo" if self._status else "Inativo"
+        return "Ativo" if self._status else "Inativo (Conta Suspensa/Desativada)"
     
-    @status.setter
-    def status(self, valor):
-        if not isinstance(valor, bool):
-            raise TypeError("Erro: Status deve ser um bool (True ou False)!")
-        else:
-            self._status = valor
+    @property
+    def login(self):
+        return "Online" if self._login == True else "Offline"
 
     #-------
     #MÉTODOS
@@ -149,32 +142,42 @@ class Usuario(ABC):
 
     @abstractmethod
     def get_permissao(self):
-        """Método abstrato: cada subclasse (Aluno, Professor) 
-        retornará sua própria string ou lista de permissões.
+        """Método abstrato: cada subclasse retornará 
+        sua propria lista de permissões.
         """
         pass
 
+    @abstractmethod
     def exibir_perfil(self):
-        """Exibe as informações básicas do Usuário"""
-        print(f"\n--- Perfil do Usuário [{self.status}]")
-        print(f"ID: {self.id}")
-        print(f"Nome: {self.nome}")
-        print(f"CPF: {self.cpf}")
-        print(f"Email: {self.email}")
-        print(f"Telefone: {self.telefone}")
-        print(f"Data de Nascimento: {self.data_nascimento}")
+        """Método abstrato: cada subclasse retornará
+        suas próprias informações de usuario
+        """
+        pass
 
-    def autenticar(self, senha_tentativa):
-        """Verifica se a senha coincide com a senha privada, True para Correta e False para Errada"""
-        return self._senha == senha_tentativa.strip()
+    def realizar_login(self, email_tentativa, senha_tentativa):
+        """Lógica para realizar o login do Usuário"""
+        if not self._status:
+            raise PermissionError("Erro: Esta conta está desativada, por favor entrar em contato com a secretaria.")
+        if senha_tentativa != self._senha or email_tentativa != self._email:
+            raise  ValueError("Erro: Email ou senha inválidos.")
+        
+        self._login = True
+        return True
 
     def encerrar_sessao(self):
-        """Lógica para log de saída do Sistema"""
-        print(f"Sessão do usuário {self.nome} encerrada com sucesso.")
-
-    def abrir_configuraçoes(self):
-        """Simulação de abertura de menu de configurações."""
-        print(f"Abrindo painel de configurações para: {self._email}...")
+        """Lógica para deslogar do Sistema"""
+        if not self._login:
+            return False
+        
+        self._login = False
+        return True
+        
+    def trocar_senha(self, verificador, nova_senha):
+        """Lógica para alterar a senha"""
+        if verificador != self._senha:
+            raise ValueError("Erro: Senha anterior inválida.")
+        
+        self.senha = nova_senha
 
     def to_dict(self):
         return {
@@ -184,7 +187,8 @@ class Usuario(ABC):
             "cpf": self._cpf,
             "email": self._email,
             "senha": self._senha,
-            "telefone": self._telefone,
+            "telefone": self.telefone,
             "data_nascimento": self.data_nascimento,
-            "status": self._status
+            "status": self._status,
+            "sessao": self.login
         }
