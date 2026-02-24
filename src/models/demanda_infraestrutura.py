@@ -3,7 +3,7 @@ from core.configuracoes import Configuracoes
 
 class DemandaInfraestrutura(Demanda):
     """
-    Essa docstring tem a função de ordenar as demandas de estruturas, passando por um 
+    Essa classe tem a função de ordenar as demandas de estruturas, passando por um 
     processo de solicitação que validam as informações, nível de importância e coleta os 
     dados dos envolvidos. 
     """
@@ -14,6 +14,11 @@ class DemandaInfraestrutura(Demanda):
         self.config = Configuracoes
 
     def processar_solicitacao(self, usuario):
+        """
+        Esse método primeiro passa pela primeira validação, para conferir o acesso, e depois passa pela segunda validação:
+        calcular o custo estimado e, caso ele seja maior que o definido nas configs, atualizar o status para licitação,
+        em prol de solicitar o aumento da verba.
+        """
         if self.id_municipio != usuario.id_municipio: 
             print(f"Acesso negado! o usuário {usuario.nome} não pertence a esse município") 
             return 
@@ -25,5 +30,8 @@ class DemandaInfraestrutura(Demanda):
             self.atualizar_status("EM ANDAMENTO")
 
         self.emitir_notificacao_critica()
+        """Gatilho para urgência (se a prioridade for crítica, emitir chamado)"""
+
         self.atualizar(usuario)
+        """Atualiza quem foi a última pessoa a mexer na demanda"""
 
