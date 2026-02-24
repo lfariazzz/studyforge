@@ -24,7 +24,7 @@ class AvaliadorFrequencia:
                 total_presencas_mes_aluno += 1
 
         return total_presencas_mes_aluno
-
+S
     def media_presenca_mensal_aluno(self, aluno, turma, mes):
         aulas_mes_turma = self.aulas_mes_turma(turma,mes)
         if aulas_mes_turma != 0:

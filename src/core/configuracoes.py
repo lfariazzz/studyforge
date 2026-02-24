@@ -18,7 +18,20 @@ class Configuracoes:
 
 
     def atualizar_parametro(self, nome, valor):
-        """Método para alteração de limites e configurações pré-estabelecidas"""
+        """Altera dinamicamente um parâmetro de configuração do sistema.
+
+        O método normaliza o nome do parâmetro para maiúsculas e valida se o novo 
+        valor é compatível com o tipo de dado do valor atual para evitar 
+        inconsistências em cálculos das regras de negócio.
+
+        Args:
+            nome (str): O nome da configuração (ex: 'frequencia_minima').
+            valor (int|float): O novo valor a ser atribuído ao parâmetro.
+
+        Raises:
+            ValueError: Se o parâmetro informado não existir ou for privado.
+            TypeError: Se o tipo do valor fornecido for incompatível com o atual.
+        """
         nome = nome.upper()
         if hasattr(self, nome) and not nome.startswith("_"):
             atual = getattr(self, nome)
@@ -31,7 +44,15 @@ class Configuracoes:
             raise ValueError("Parâmetro fornecido inválido")
 
     def resetar_padroes(self):
-        """Método de redefinação das configurações iniciais do sistema"""
+        """Restaura todas as configurações para os valores originais da classe.
+
+        Este método remove as customizações feitas no nível da instância (armazenadas 
+        em __dict__), fazendo com que o sistema volte a utilizar os valores 
+        estáticos definidos originalmente na estrutura da classe.
+
+        Note:
+            Atributos internos ou privados (que começam com '_') não são afetados.
+        """
         for k in list(self.__dict__.keys()):
             if not k.startswith("_"):
                 delattr(self, k)
