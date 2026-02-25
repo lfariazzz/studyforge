@@ -18,6 +18,7 @@ class DemandaPedagogica(Demanda):
         # 3. Pegando o total de alunos direto do objeto turma
         self.__total_alunos = len(turma._alunos_matriculados) if hasattr(turma, '_alunos_matriculados') else 0
 
+    """Os propertys responsáveis por tornar possível a visualização dos atributos do método construtor desta classe"""
     @property
     def indice_lacuna(self):
         """Calcula a proporção de alunos em risco em relação ao total da turma."""
@@ -30,6 +31,8 @@ class DemandaPedagogica(Demanda):
         """Retorna a média de frequência que o Avaliador calculou."""
         return self.__media_frequencia
     
+    
+
     def validar_reforco(self):
         """
         Aplica a regra de negócio para decidir se a turma precisa de reforço.

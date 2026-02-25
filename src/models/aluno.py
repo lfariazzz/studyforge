@@ -1,6 +1,10 @@
 from src.models.usuario import Usuario
-from datetime import date
+from src.models.turma import Turma
+from datetime import date, datetime
 import re
+
+MURAL_NOTICIAS = []
+
 """
 Representa a entidade Aluno conforme o diagrama UML.
 Herda atributos base de Usuario e gerencia sua vida acadêmica.
@@ -8,10 +12,13 @@ Herda atributos base de Usuario e gerencia sua vida acadêmica.
 
 class Aluno(Usuario):
     def __init__(self, nome, cpf, email, senha, telefone, data_nascimento,
-                 id_matricula, turma_associada=None, status=True):
-        super().__init__(nome, cpf, email, senha, telefone, data_nascimento, status)
+                turma_associada = None):
+        super().__init__(nome, cpf, email, senha, telefone, data_nascimento)
 
-        self.id_matricula = id_matricula
+        ano_atual = datetime.now().year
+        matricula_base = f"{self.id:06}"
+
+        self._id_matricula = f"{ano_atual}.{matricula_base[:3]}.{matricula_base[3:]}"
         self.turma_associada = turma_associada 
         self._notas = {}
         self._historico_frequencia = [] 
@@ -25,21 +32,6 @@ class Aluno(Usuario):
         """Retorna a matrícula única do aluno."""
         return self._id_matricula
     
-    @id_matricula.setter
-    def id_matricula(self, valor):
-        if not isinstance(valor, str):
-            raise TypeError("Erro: O id da matrícula deve ser uma string!")
-        
-        matricula_limpa = valor.strip().upper()
-
-        padrao_matricula = r'^MAT-\d{4}-\d{4}$'
-
-        if not re.match(padrao_matricula, matricula_limpa):
-            raise ValueError("Erro: Matrícula inválida! Use o padrão MAT-ANO-0000 (Ex: MAT-2026-0001).")
-        
-        else:
-            self._id_matricula = matricula_limpa
-
     @property
     def turma_associada(self):
         """Retorna o objeto ou identificador da turma do aluno."""
@@ -49,12 +41,12 @@ class Aluno(Usuario):
     def turma_associada(self, valor):
         if hasattr(valor, 'id_turma'):
             self._turma_associada = valor
-        elif isinstance(valor, str):
+            if self not in valor.alunos_matriculados:
+                valor.adicionar_aluno(self)
+        elif isinstance(valor, str) or valor is None:
             self._turma_associada = valor
-        elif valor is None:
-            self._turma_associada = None
         else:
-            raise ValueError("Erro: turma_associada deve ser um objeto Turma ou uma string identificadora.")
+            raise ValueError("Erro: turma_associada deve ser um objeto Turma ou string.")
 
     #implementado por Levi para integração com o src/services/avaliador_frequencia.py (RN02)    
     @property
@@ -68,7 +60,6 @@ class Aluno(Usuario):
         """
         Calcula a frequência baseada no total de aulas da TURMA.
         """
-        from src.models.turma import Turma
         
         if not self.turma_associada or not hasattr(self.turma_associada, '_diario_de_classe'):
             return 100.0
@@ -86,70 +77,105 @@ class Aluno(Usuario):
     # MÉTODOS
     # -------
 
-    def get_permissao(self) -> str:
-        if not self.turma_associada:
-            return "Aluno: Sem turma vinculada. Acesso restrito."
+    def get_permissao(self):
+        """Função que retorna as permissões da classe Aluno"""
+        return ["VISUALIZAR_NOTAS", "VER_FREQUENCIA", "VER_NOTICIAS", "VER_HORARIO", "BAIXAR_MATERIAL"]
         
-        nome_turma = self.turma_associada.nome if hasattr(self.turma_associada, 'nome') else self.turma_associada
-        return f"Aluno: Visualização de conteúdos acadêmicos limitada à turma {nome_turma}."
     
     def ver_frequencia(self):
-        freq = self.frequencia
-        alerta = "⚠️ ATENÇÃO: Frequência abaixo de 75%!" if freq < 75 else "✅ Frequência regular."
+        """Retorna o histórico detalhado de datas e presenças."""
+        if not self._historico_frequencia:
+            return "Nenhum registro de frequência encontrado."
+        relatorio = [f"Frequência atual: {self.frequencia}%"]
+        for reg in self._historico_frequencia:
+            status = "Presente" if reg['presenca'] else "Faltou"
+            relatorio.append(f"{reg['data']}: {status}")
 
-        print(f"\n--- Relatório de Frequência: {self.nome} ---")
-        print(f"Frequência Atual: {freq}%")
-        print(alerta)
-        print("------------------------------------------")
+        return "\n".join(relatorio)
+    
 
     def ver_horario(self):
-        if not self.turma_associada:
-            print(f"⚠️ Aluno {self.nome} não possui vínculo com turma.")
-            return
+        """
+        Consulta o quadro de horários/professores da turma associada.
+        """
+        if not self.turma_associada or isinstance(self.turma_associada, str):
+            return "Aluno sem turma vinculada. Horário indisponível."
 
-        cronograma = self.turma_associada.obter_quadro_horario()
-        print(f"\n--- QUADRO DE HORÁRIOS: {cronograma['Turma']} ---")
-        print(f"Professores: {cronograma['Professores']}")
-
-        if "Horarios" in cronograma:
-            for dia, horas in cronograma["Horarios"].items():
-                print(f"{dia}: {', '.join(horas)}")
-        else:
-            print("Horários detalhados não definidos.")
+        # Garante que o método existe antes de chamar
+        if hasattr(self.turma_associada, 'obter_quadro_horario'):
+            quadro = self.turma_associada.obter_quadro_horario()
+            professores = ", ".join(quadro["Professores"]) if isinstance(quadro["Professores"], list) else quadro["Professores"]
+            return (f"--- HORÁRIO DA TURMA: {quadro['Turma']} ---\n"
+                f"Professores Regentes: {professores}")
     
+        return "O recurso de horário não está disponível nesta turma."
+
     def exibir_perfil(self):
-        nome_t = self.turma_associada.nome if hasattr(self.turma_associada, 'nome') else self.turma_associada
-        freq = self.frequencia
-        alerta = " ⚠️" if freq < 75 else "" 
+        """
+        Implementação do método abstrato da classe Usuario.
+        Retorna uma string formatada com os dados principais do aluno.
+        """
+        nome_turma = self.turma_associada.nome if hasattr(self.turma_associada, 'nome') else "Não vinculada"
+        status_conta = "Ativa" if self._status else "Inativa/Suspensa"
 
-        print("\n" + "="*35)
-        print(f"🎓 PERFIL DO ALUNO: {self.nome}")
-        print("="*35)
-        print(f"Matrícula: {self.id_matricula}")
-        print(f"Turma:     {nome_t}")
-        print(f"E-mail:    {self.email}")
-        print(f"Frequência: {freq}%{alerta}")
-        print(f"Status:    {'Ativo' if self.status else 'Inativo'}")
-        print("="*35 + "\n")
+        return (
+            f"\n" + "="*40 + "\n"
+            f"          PERFIL DO ALUNO\n"
+            f"="*40 + "\n"
+            f"Nome: {self.nome}\n"
+            f"Matrícula: {self.id_matricula}\n"
+            f"Turma: {nome_turma}\n"
+            f"E-mail: {self.email}\n"
+            f"Status: {status_conta}\n"
+            f"Frequência Geral: {self.frequencia}%\n"
+            f"="*40
+        )
 
-    def ver_noticias(self, lista_noticias: list[dict]):
-        if not self.turma_associada:
-            return
+    def visualizar_notas(self):
+        """
+        Permite ao aluno visualizar suas notas organizadas por disciplina.
+        """
+        if not self._notas:
+            return "Nenhuma nota foi lançada no sistema até o momento."
 
-        id_escola_aluno = self.turma_associada.id_escola
-        id_turma_aluno = self.turma_associada.id_turma
+        exibicao = [f"--- 📝 BOLETIM ESCOLAR: {self.nome} ---"]
         
-        print(f"\n--- MURAL DE NOTÍCIAS PARA: {self.nome} ---")
-        avisos = False
+        for disciplina, lista_notas in self._notas.items():
+            media = sum(lista_notas) / len(lista_notas) if lista_notas else 0
+            notas_str = " | ".join(map(str, lista_notas))
+            
+            exibicao.append(f"🔹 {disciplina}: {notas_str} (Média: {media:.2f})")
 
-        for n in lista_noticias:
-            if n.get("id_escola") == id_escola_aluno or n.get("id_turma") == id_turma_aluno:
-                tipo = "TURMA" if n.get("id_turma") else "ESCOLA"
-                print(f"[{tipo}] {n['data']} - {n['titulo']}")
-                avisos = True
+        exibicao.append("-" * 40)
+        return "\n".join(exibicao)
 
-        if not avisos:
-            print("Nenhuma notícia nova.")
+    def adicionar_nota(self, disciplina: str, valor: float):
+        """
+        Método auxiliar que será chamado pelo professor para inserir notas.
+        """
+        if not (0 <= valor <= 10):
+            raise ValueError("Erro: A nota deve ser um valor entre 0 e 10.")
+        
+        if disciplina not in self._notas:
+            self._notas[disciplina] = []
+
+        self._notas[disciplina].append(valor)
+
+    def ver_noticias(self):
+        """
+        Consulta o mural de notícias global da escola.
+        """
+        if not MURAL_NOTICIAS:
+            return "O mural está vazio. Nenhuma notícia nova por enquanto."
+
+        exibicao = [f"--- 📢 MURAL DE NOTÍCIAS DA ESCOLA ---"]
+        
+        for noticia in reversed(MURAL_NOTICIAS):
+            exibicao.append(f"📌 {noticia['titulo']} ({noticia['data']})")
+            exibicao.append(f"   {noticia['conteudo']}")
+            exibicao.append("-" * 30)
+
+        return "\n".join(exibicao)
 
     #refatorado por Levi para implementação da RN02
     def registrar_presenca(self, data: date, presente: bool):
@@ -163,18 +189,24 @@ class Aluno(Usuario):
             "presenca": presente
         })
 
-    def baixar_material(self):
-        pass
+    def baixar_material(self, nome_material):
+        if not self.turma_associada:
+            return "Você não está vinculado a nenhuma turma"
+        
+        for material in getattr(self.turma_associada, '_materiais_postados', []):
+            if material ['nome'] == nome_material:
+                return f"Download de '{nome_material}' realizado. Link: {material['link']}"
+            
+        return "Material não encontrado na sua turma"
     
     def to_dict(self):
+        """Exporta os dados do aluno em formato de dicionário."""
         dados = super().to_dict()
-        id_t = self.turma_associada.id_turma if hasattr(self.turma_associada, 'id_turma') else self.turma_associada
-        
         dados.update({
             "id_matricula": self.id_matricula,
-            "id_turma": id_t,
-            "percentual_frequencia": self.frequencia,
-            "historico_frequencia": self._historico_frequencia,
-            "notas": self._notas 
+            "turma": self.turma_associada.nome if hasattr(self.turma_associada, 'nome') else str(self.turma_associada),
+            "historico": self._historico_frequencia,
+            "notas": self._notas
         })
+
         return dados
