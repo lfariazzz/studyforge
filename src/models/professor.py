@@ -125,7 +125,7 @@ class Professor(Usuario):
         if turma not in self.turmas_associadas:
             print(f"❌ Erro de Permissão: O professor {self.nome} não pode realizar chamada na turma {getattr(turma, 'nome', 'desconhecida')} (não vinculada).")
             return
-
+ 
         if not hasattr(turma, 'alunos_matriculados'):
             print("❌ Erro: Objeto turma inválido ou sem lista de alunos.")
             return
