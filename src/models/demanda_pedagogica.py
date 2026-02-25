@@ -2,66 +2,54 @@ from src.models.demanda import Demanda
 
 class DemandaPedagogica(Demanda):
     """
-    Essa classe tem a função de calcular as demandas pedagógicas como a necessidade de realizar
-    mais aulas pela lacuna de conteúdo
+    Representa uma demanda gerada automaticamente ou manualmente para tratar
+    problemas de frequência e desempenho escolar (lacunas de aprendizado).
     """
     def __init__(self, id_demanda, descricao, prioridade, solicitante, 
-                 total_alunos, alunos_abaixo_media, frequencia_turma, alunos_presentes, turma_alvo):
+                 turma, media_mensal, alunos_abaixo_media):
+        # 1. Dados básicos enviados para a classe pai
         super().__init__(id_demanda, descricao, prioridade, solicitante)
         
-        self.__total_alunos = total_alunos
-        self.__alunos_abaixo_media = alunos_abaixo_media
-        self.__frequencia_turma = frequencia_turma
-        self.__indice_lacuna = 0.0
-        self.__alunos_presentes = alunos_presentes
-        self.__turma_alvo = turma_alvo
+        # 2. Atributos "Casados" com o AvaliadorFrequencia
+        self.__turma_alvo = turma
+        self.__media_frequencia = media_mensal  # Recebe o valor (ex: 0.70 para 70%)
+        self.__qtd_alunos_em_risco = alunos_abaixo_media
+        
+        # 3. Pegando o total de alunos direto do objeto turma
+        self.__total_alunos = len(turma._alunos_matriculados) if hasattr(turma, '_alunos_matriculados') else 0
 
     """Os propertys responsáveis por tornar possível a visualização dos atributos do método construtor desta classe"""
     @property
     def indice_lacuna(self):
-        return self.__indice_lacuna
+        """Calcula a proporção de alunos em risco em relação ao total da turma."""
+        if self.__total_alunos == 0:
+            return 0.0
+        return (self.__qtd_alunos_em_risco / self.__total_alunos)
 
     @property
     def frequencia_atual(self):
-        return self.__frequencia_turma
+        """Retorna a média de frequência que o Avaliador calculou."""
+        return self.__media_frequencia
     
     
 
     def validar_reforco(self):
         """
-    Método que cálcula a média de alunos abaixo da média e frequência da turma para validar o reforço.
-    Nele, o índice lacuna tem que ser maior que 40% para validar o reforço de aulas e a frequência
-    menor que 75% para chamar a atenção da direção da escola.
+        Aplica a regra de negócio para decidir se a turma precisa de reforço.
+        Regra: Lacuna >= 40% dos alunos OU Frequência < 75%
         """
-
-        if self.__total_alunos == 0: 
-            return False 
-      
-        self.__indice_lacuna = self.__alunos_abaixo_media / self.__total_alunos
-        self.__frequencia_turma = self.__alunos_presentes / self.__total_alunos
+        # Se 40% ou mais da turma está abaixo da média de notas
+        regra_nota = self.indice_lacuna >= 0.4 
         
-        regra_nota = self.__indice_lacuna >= 0.4 
-        regra_presenca = self.__frequencia_turma >= 0.75 
+        # Se a frequência da turma for menor que 75% (0.75)
+        # Nota: Ajustei para '<' pois frequência baixa é o que gera reforço
+        regra_presenca = self.__media_frequencia < 0.75 
 
         return regra_nota or regra_presenca
 
-
     def processar_solicitacao(self, usuario):
         """
-        Processa a solicitação de reforço pedagógico baseada em indicadores de desempenho.
+        Analisa os dados vindos do Avaliador e define o status final da demanda.
         """
-        if self.id_municipio != usuario.id_municipio: 
-            print("Acesso negado")
-            return
-        
-        if self.validar_reforco(): 
-            print(f"STATUS DA SALA: {self.__turma_alvo.nome}  ")
-            print(f"Frequência: {self.__frequencia_turma*100:.1f}%")
-            print(f"Porcentagem lacuna de aprendizado: {self.__indice_lacuna*100:.1f}%")
-
-            self.atualizar_status("REFORÇO APROVADO")
-
-        else: 
-            self.atualizar_status("REGULAR")
-
-
+        # Verifica permissões (Município/Perfil)
+        self.validar_usuario(usuario)
