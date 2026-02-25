@@ -75,6 +75,28 @@ class Escola:
         """Retorna o identificador do município."""
         return self._id_municipio
     
+    @property
+    def capacidade_infraestrutura(self):
+        """Retorna a capacidade máxima de alunos da unidade."""
+        return self._capacidade_infraestrutura
+    
+    @capacidade_infraestrutura.setter
+    def capacidade_infraestrutura(self, valor):
+        """Atualiza a capacidade, validando contra o total de alunos atuais."""
+        if valor < 0:
+            raise ValueError("A capacidade da infraestrutura não pode ser negativa.")
+        
+        # Cálculo de quantos alunos a escola já possui em todas as turmas
+        total_alunos_atuais = sum(len(t.alunos_matriculados) for t in self._turmas_existentes)
+        
+        if valor < total_alunos_atuais:
+            raise ValueError(
+                f"Não é possível reduzir a capacidade para {valor}. "
+                f"A escola já possui {total_alunos_atuais} alunos matriculados."
+            )
+            
+        self._capacidade_infraestrutura = int(valor)
+    
     def gerar_relatorio_frequencia(self):
       """Calcula a média de frequência de todos os alunos de todas as turmas
         
@@ -87,7 +109,6 @@ class Escola:
          
         # Percorre os alunos daquela turma específica
         for aluno in turma.alunos_matriculados:
-            # CORREÇÃO: Removido os parênteses (), pois frequencia é uma @property
             total_percentual += aluno.frequencia 
             qtd_alunos += 1
     
@@ -144,7 +165,8 @@ class Escola:
             "id_escola" : self._id_escola,
             "gestor_atual": self._gestor_atual.nome if self._gestor_atual else None,
             "verba_disponivel_escola" : self._verba_disponivel_escola,
-            "id_municipio" : self._id_municipio
+            "id_municipio" : self._id_municipio,
+            "capacidade_infraestrutura": self._capacidade_infraestrutura
         }
 
     def __str__(self):
