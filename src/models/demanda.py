@@ -16,12 +16,6 @@ class AuditMixin:
         agora = datetime.now()
         data_formatada = agora.strftime("%d/%m/%Y %H:%M:%S")
         
-        print(f"---LOG DE AUDITORIA---"
-              f"Usuário: {usuario_que_alterou.nome}"
-              f"Data e Hora da alteração: {data_formatada}"
-              f"--------------------------------------------"
-        )
-
 
 class Demanda(ABC, AuditMixin):
     """
@@ -37,11 +31,31 @@ class Demanda(ABC, AuditMixin):
         self.__prioridade = prioridade.upper() 
         self.__solicitante = solicitante   
 
-    @property
-    def id_municipio(self):
-        """Busca o id_municipio através do objeto solicitante (RN01)"""
-        return self.__solicitante.id_municipio 
-    
+        @property
+        def id_municipio(self):
+            """
+            Busca o ID do município navegando pelos objetos dos colegas (RN01).
+            Isso evita que o código quebre se o atributo não estiver direto no solicitante.
+            """
+        #1. Se for um secretário
+        if hasattr(self.__solicitante, 'municipio_responsavel'):
+            # Acessa: Solicitante -> Municipio -> id_municipio
+            return self.__solicitante.municipio_responsavel.id_municipio
+        
+        #2. Se for um Gestor 
+        if hasattr(self.__solicitante, 'escola_associada'):
+            # Acessa: Solicitante -> Escola -> Municipio -> id_municipio
+            return self.__solicitante.escola_associada.municipio.id_municipio
+
+        return None 
+
+
+    @property 
+    def status(self):
+        """Permite que o atributo status seja utilizado nas outras classes"""
+        return self.__status
+
+
     @property
     def solicitante(self):
         """Permite que as filhas acessem o objeto solicitante para auditoria"""
