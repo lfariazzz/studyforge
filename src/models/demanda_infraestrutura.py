@@ -13,25 +13,103 @@ class DemandaInfraestrutura(Demanda):
         self.__localizacao_demanda = localizacao_demanda
         self.config = Configuracoes
 
-    def processar_solicitacao(self, usuario):
+
+    def validar_usuario(self, usuario):
         """
-        Esse método primeiro passa pela primeira validação, para conferir o acesso, e depois passa pela segunda validação:
-        calcular o custo estimado e, caso ele seja maior que o definido nas configs, atualizar o status para licitação,
-        em prol de solicitar o aumento da verba.
+        Valida se o usuário possui permissão de acesso à demanda baseada em seu perfil e município.
+
+        Verifica se o usuário é um Gestor ou Secretário e se o município vinculado 
+        ao seu perfil coincide com o município da demanda (jurisdição).
+
+        Args:
+            usuario: Objeto do usuário que está tentando realizar a ação.
+
+        Returns:
+            bool: True se o usuário for válido e pertencer ao mesmo município.
+
+        Raises:
+            PermissionError: Se o perfil for inválido ou se o município não coincidir.
         """
-        if self.id_municipio != usuario.id_municipio: 
-            print(f"Acesso negado! o usuário {usuario.nome} não pertence a esse município") 
-            return 
-        if self.__custo_estimado > self.config.LIMITE_CUSTO_DEMANDA: 
-            print(f"O custo estimado é maior do que o disponível, a obra entrará em processo de licitação")
-            self.atualizar_status ("EM LICITAÇÃO")
+        #Aqui são duas variáveis que vão verificar se existem esses determinados atributos no usuario.
+        gestor = hasattr(usuario, 'escola_associada')
+        secretario = hasattr(usuario, 'municipio_responsavel')
+
+        #Se não for secretário ou gestor, erro.
+        if not (gestor or secretario):
+            raise PermissionError("Acesso negado: Perfil de usuário inválido")
+
+        #Esse atributo serve para pegar qual é o municipio responsável. 
+        municipio_obj = getattr(usuario, 'municipio_responsavel', None)
+        
+        #Nesse caso, se o objeto não tem valor None, entao obrigatoriamente ele cai como um secretário
+        if municipio_obj is not None: 
+            id_municipio_usuario = municipio_obj.id_municipio 
+        #Caso o valor do municipio_obj seja nulo, então obrigatoriamente é um gestor.
         else: 
-            print(f"O custo para esta obra foi aprovado, entrando em execução")
-            self.atualizar_status("EM ANDAMENTO")
+            id_municipio_usuario = usuario.escola_associada.municipio.id_municipio
 
-        self.emitir_notificacao_critica()
-        """Gatilho para urgência (se a prioridade for crítica, emitir chamado)"""
+        #Se o id do munícipio não bater com o id do munícipio do usuário, da erro. Basicamente, vai dar erro
+        # se um gestor ou secretário de Juazeiro tentar mexer em alguma coisa do Crato, por exemplo.
+        if self.id_municipio != id_municipio_usuario:
+            raise PermissionError("Acesso negado: O usuário não pertence a esse município")
+        
 
+        return True 
+
+
+    def solicitar_demanda(self, usuario):
+        """
+        Inicia o processo de solicitação de uma demanda de infraestrutura.
+
+        Valida o usuário, verifica se o custo estimado está dentro dos limites 
+        configurados e altera o status da demanda para 'PENDENTE'.
+
+        Args:
+            usuario: Objeto do usuário (Gestor ou Secretário) que solicita a demanda.
+
+        Returns:
+            bool: True se a solicitação for processada com sucesso.
+
+        Raises:
+            ValueError: Se o custo estimado ultrapassar o limite permitido.
+            PermissionError: Se o usuário não tiver permissão para este município.
+        """
+        #Chama a função de validar o usuário
+        self.validar_usuario(usuario)
+
+        #Se o custo estimado dessa demanda for maior que o estimado, da erro. 
+        if self.__custo_estimado > self.config.LIMITE_CUSTO_DEMANDA:
+            raise ValueError(f"Custo de R${self.__custo_estimado} excede o limite permitido de R$15.000,00 reais.")
+
+        #Salva quem solicitou a demanda e em que horas solicitou essa demanda. 
         self.atualizar(usuario)
-        """Atualiza quem foi a última pessoa a mexer na demanda"""
 
+        self.__status = "PENDENTE"
+    
+        return True 
+    
+
+    def aprovar_demanda(self, usuario): 
+        """
+        Realiza a aprovação oficial de uma demanda pendente.
+
+        Este método restringe a aprovação exclusivamente a usuários com perfil de 
+        Secretário de Educação vinculados ao mesmo município da demanda.
+
+        Args:
+            usuario: Objeto do usuário que está tentando aprovar.
+
+        Returns:
+            bool: True se a demanda for aprovada com sucesso.
+
+        Raises:
+            PermissionError: Se o usuário for um Gestor ou pertencer a outro município.
+        """
+        #Valida se é um usuário que pode acessar esse método (Gestor ou Secretário)
+        self.validar_usuario(usuario)
+        
+        #Valida se realmente é um secretário 
+        if not hasattr(usuario, 'municipio_responsavel'):
+            raise PermissionError("Somente um Secretário de Educação pode aprovar uma demanda")
+        
+        self.atualizar_status("APROVADO")
