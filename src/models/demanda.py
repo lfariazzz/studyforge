@@ -84,4 +84,4 @@ class Demanda(ABC, AuditMixin):
     def atualizar_status(self, novo_status):
         """Método para alteração do status privado (usado pelas filhas)"""
         self.__status = novo_status
-        print(f"Status alterado para: {self.__status}")
+        return self.__status 

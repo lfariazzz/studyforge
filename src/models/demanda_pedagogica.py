@@ -24,15 +24,13 @@ class DemandaPedagogica(Demanda):
         """Calcula a proporção de alunos em risco em relação ao total da turma."""
         if self.__total_alunos == 0:
             return 0.0
-        return (self.__qtd_alunos_em_risco / self.__total_alunos)
+        return self.__qtd_alunos_em_risco / self.__total_alunos
 
     @property
     def frequencia_atual(self):
         """Retorna a média de frequência que o Avaliador calculou."""
         return self.__media_frequencia
     
-    
-
     def validar_reforco(self):
         """
         Aplica a regra de negócio para decidir se a turma precisa de reforço.
@@ -53,3 +51,16 @@ class DemandaPedagogica(Demanda):
         """
         # Verifica permissões (Município/Perfil)
         self.validar_usuario(usuario)
+        
+        if self.validar_reforco(): 
+            print(f"--- ANÁLISE PEDAGÓGICA: {self.__turma_alvo.nome} ---")
+            print(f"Frequência Mensal: {self.__media_frequencia * 100:.1f}%")
+            print(f"Alunos em Risco: {self.__qtd_alunos_em_risco} ({self.indice_lacuna * 100:.1f}%)")
+
+            self.status = "REFORÇO NECESSÁRIO"
+            self.atualizar(usuario)
+        else: 
+            self.status = "REGULAR"
+            self.atualizar(usuario)
+            
+        return True
