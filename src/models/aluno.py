@@ -1,7 +1,5 @@
 from src.models.usuario import Usuario
-from src.models.turma import Turma
 from datetime import date, datetime
-import re
 
 MURAL_NOTICIAS = []
 

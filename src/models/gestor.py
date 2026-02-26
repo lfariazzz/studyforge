@@ -1,6 +1,4 @@
-from src.models.escola import Escola
 from src.models.usuario import Usuario
-from src.models.demanda import Demanda
 from src.models.demanda_infraestrutura import DemandaInfraestrutura
 from src.models.demanda_pedagogica import DemandaPedagogica
 
@@ -22,6 +20,8 @@ class Gestor(Usuario):
 
     @escola_associada.setter
     def escola_associada(self, valor):
+        from src.models.escola import Escola
+
         if not isinstance(valor, Escola):
             raise TypeError("Erro: Escola associada deve ser um objeto da classe Escola!")
         else:
@@ -53,14 +53,7 @@ class Gestor(Usuario):
                 "solicitar demandas, administrar demandas, gerenciar escola"
     
     def exibir_perfil(self):
-        print("\n" + "="*40)
-        print(f"PERFIL DO GESTOR: {self.nome}")
-        print("="*40)
-        print(f"Email:               {self.email}")
-        print(f"Telefone:            {self.telefone}")
-        print(f"Escola Associada:    {Escola.nome}")
-        print(f"Status:              {'ATIVO' if self.status else 'INATIVO'}")
-        print("="*40 + "\n")
+        pass
 
     def ver_estatisticas(self):
         pass
