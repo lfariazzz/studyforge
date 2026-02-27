@@ -20,6 +20,7 @@ class Turma:
         self._id_escola = id_escola
         self._capacidade_maxima = capacidade_maxima
         self.turno = turno
+    
         
         self._professores_regentes = []
         self._alunos_matriculados = []

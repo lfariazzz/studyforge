@@ -21,15 +21,15 @@ class Demanda(ABC, AuditMixin):
     """
     Classe base seguindo os nomes definidos no UML.
     """
-    def __init__(self, id_demanda, descricao, prioridade, solicitante):
+    def __init__(self, id_demanda, descricao, prioridade, solicitante, municipio_responsavel):
         AuditMixin.__init__(self)
         ABC.__init__(self)
 
-        self.__id_demanda = id_demanda     
         self.__descricao = descricao       
         self.__status = "ABERTO"           
         self.__prioridade = prioridade.upper() 
         self.__solicitante = solicitante   
+        self.municipio_responsavel = municipio_responsavel
 
         @property
         def id_municipio(self):
@@ -73,9 +73,13 @@ class Demanda(ABC, AuditMixin):
     
     def emitir_notificacao_critica(self):
         """Gatilho para urgência baseado no nome do atributo do UML (prioridade)"""
+        mensagem = ""
         if self.__prioridade == "CRÍTICO":
-            print("ALERTA!: Notificando Gestor e Secretário!"
-            f"Problema detectado: {self.__descricao}")
+            mensagem = (
+                f"ALERTA!: Notificando Gestor e Secretário! "
+                f"Problema detectado: {self.__descricao}")
+               
+        return mensagem
 
     @abstractmethod
     def processar_solicitacao(self, usuario):
