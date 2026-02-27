@@ -143,8 +143,7 @@ class Professor(Usuario):
             "titulacao": self.titulacao,
             "area_atuacao": self.area_atuacao,
             "salario": self.salario,
-            "escola_associada": self.escola_associada,
+            "escola_nome": self.escola_associada.nome if hasattr(self.escola_associada, 'nome') else str(self.escola_associada),
             "turmas_vinculadas": [turma.nome for turma in self._turmas_associadas]
         })
-
         return dados
