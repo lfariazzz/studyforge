@@ -31,9 +31,10 @@ class Escola:
         self._verba_disponivel_escola = float(verba_disponivel_escola)
         self._id_municipio = id_municipio
         self._capacidade_infraestrutura = capacidade_infraestrutura # Define o limite físico da unidade
-
+        self._mural_oficial = []
         self._turmas_existentes = []
         self._professores_empregados = []
+        self._solicitacoes_enviadas = []
     
     @property
     def nome(self):
@@ -96,6 +97,10 @@ class Escola:
             )
             
         self._capacidade_infraestrutura = int(valor)
+
+    @property
+    def solicitacoes_enviadas(self):
+        return self._solicitacoes_enviadas
     
     def gerar_relatorio_frequencia(self):
       """Calcula a média de frequência de todos os alunos de todas as turmas
@@ -156,6 +161,18 @@ class Escola:
             self._turmas_existentes.append(turma)
             return True
         return False
+
+    def adicionar_noticia(self, titulo, conteudo, autor):
+        """Adiciona uma nova notícia ao mural da escola."""
+        from datetime import date
+        nova_noticia = {
+            "titulo": titulo,
+            "conteudo": conteudo,
+            "data": date.today().strftime("%d/%m/%Y"),
+            "autor": autor
+        }
+        self._mural_oficial.append(nova_noticia)
+        return True
     
     def to_dict(self):
         """Converte os dados da escola em dicionário."""
