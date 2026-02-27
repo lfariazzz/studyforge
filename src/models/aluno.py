@@ -1,8 +1,6 @@
 from src.models.usuario import Usuario
 from datetime import date, datetime
 
-MURAL_NOTICIAS = []
-
 """
 Representa a entidade Aluno conforme o diagrama UML.
 Herda atributos base de Usuario e gerencia sua vida acadêmica.
@@ -161,15 +159,26 @@ class Aluno(Usuario):
 
     def ver_noticias(self):
         """
-        Consulta o mural de notícias global da escola.
+        Consulta o mural de notícias oficial da escola à qual o aluno pertence.
         """
-        if not MURAL_NOTICIAS:
-            return "O mural está vazio. Nenhuma notícia nova por enquanto."
+        if not self.turma_associada or isinstance(self.turma_associada, str):
+            return "Aluno sem turma vinculada. Não é possível acessar o mural."
 
-        exibicao = [f"--- 📢 MURAL DE NOTÍCIAS DA ESCOLA ---"]
+        escola = getattr(self.turma_associada, 'escola', None)
         
-        for noticia in reversed(MURAL_NOTICIAS):
+        if not escola:
+            return "Erro: Escola não encontrada para esta turma."
+
+        mural = escola._mural_oficial
+
+        if not mural:
+            return f"O mural da escola {escola.nome} está vazio no momento."
+
+        exibicao = [f"--- 📢 MURAL DE NOTÍCIAS: {escola.nome} ---"]
+
+        for noticia in reversed(mural):
             exibicao.append(f"📌 {noticia['titulo']} ({noticia['data']})")
+            exibicao.append(f"   Autor: {noticia.get('autor', 'Gestão')}")
             exibicao.append(f"   {noticia['conteudo']}")
             exibicao.append("-" * 30)
 

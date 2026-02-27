@@ -132,6 +132,12 @@ class Usuario(ABC):
     def status(self):
         return "Ativo" if self._status else "Inativo (Conta Suspensa/Desativada)"
     
+    @status.setter
+    def status(self, valor):
+        if not isinstance(valor, bool):
+            raise TypeError("Erro: O status deve ser um valor booleano (True ou False)!")
+        self._status = valor
+    
     @property
     def login(self):
         return "Online" if self._login == True else "Offline"
