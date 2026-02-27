@@ -7,12 +7,11 @@ class DemandaInfraestrutura(Demanda):
     processo de solicitação que validam as informações, nível de importância e coleta os 
     dados dos envolvidos. 
     """
-    def __init__(self, id_demanda, descricao, prioridade, solicitante, custo_estimado, localizacao_demanda):
+    def __init__(self, id_demanda, descricao, prioridade, solicitante, custo_estimado, escola):
         super().__init__(id_demanda, descricao, prioridade, solicitante)
-        self.__custo_estimado = custo_estimado
-        self.__localizacao_demanda = localizacao_demanda
+        self._custo_estimado = custo_estimado
+        self._escola = escola
         self.config = Configuracoes
-
 
     def validar_usuario(self, usuario):
         """
@@ -74,12 +73,25 @@ class DemandaInfraestrutura(Demanda):
             ValueError: Se o custo estimado ultrapassar o limite permitido.
             PermissionError: Se o usuário não tiver permissão para este município.
         """
+
+
+        ### Instancia o soliciante como objeto, faz a verificação para
+        ### conferir se é gestor ou secretário e na variável municipio
+        ### fica guardado o municipio de fato. 
+
+        solicitante_obj = self.solicitante 
+
+        if hasattr(solicitante_obj, 'municipio_responsavel'):
+            municipio = solicitante_obj.municipio_responsavel 
+        else:
+            municipio = solicitante_obj.escola_associada.municipio 
+
+        if self.__custo_estimado > municipio.verba_disponivel_municipio:                
+            raise ValueError("Custo excede o limite do município.")
+
+
         #Chama a função de validar o usuário
         self.validar_usuario(usuario)
-
-        #Se o custo estimado dessa demanda for maior que o estimado, da erro. 
-        if self.__custo_estimado > self.config.LIMITE_CUSTO_DEMANDA:
-            raise ValueError(f"Custo de R${self.__custo_estimado} excede o limite permitido de R$15.000,00 reais.")
 
         #Salva quem solicitou a demanda e em que horas solicitou essa demanda. 
         self.atualizar(usuario)
