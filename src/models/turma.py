@@ -25,6 +25,7 @@ class Turma:
         self._professores_regentes = []
         self._alunos_matriculados = []
         self._diario_de_classe = []
+        self._notas_da_turma = []
 
     @property
     def nome(self):
@@ -53,12 +54,8 @@ class Turma:
 
     @ano_letivo.setter
     def ano_letivo(self, valor):
-        """Define o ano letivo da turma.
+        """Define o ano letivo da turma."""
 
-        O valor deve ser um número entre 2000 e 2100.
-
-        Raises:
-            ValueError: Se o ano não for válido."""
         try:
             valor_int = int(valor)
         except (ValueError, TypeError):
@@ -102,31 +99,26 @@ class Turma:
 
     def adicionar_aluno(self, aluno: Aluno):
         """Adiciona um aluno à turma.
-
         Bloqueia novas matrículas caso a capacidade máxima seja atingida.
+        Args:aluno (Aluno): Instância da classe Aluno.
+        Returns:bool: True se matrícula realizada com sucesso, False caso contrário."""
 
-        Args:
-            aluno (Aluno): Instância da classe Aluno.
-
-        Returns:
-            bool: True se matrícula realizada com sucesso, False caso contrário."""
         if len(self._alunos_matriculados) >= self._capacidade_maxima:
             print(f"Erro: Capacidade máxima de {self._capacidade_maxima} alunos atingida.")
             return False
             
         if aluno not in self._alunos_matriculados:
             self._alunos_matriculados.append(aluno)
-            aluno.turma_associada = self
+            if aluno.turma_associada != self:
+              aluno.turma_associada = self
             return True
         return False
 
     def adicionar_professor(self, professor: Professor):
         """Associa um professor à turma.
-
-        Verifica se o professor já possui alocação no mesmo ano letivo.
-
-        Args:
-            professor (Professor): Instância da classe Professor."""
+           Verifica se o professor já possui alocação no mesmo ano letivo.
+           Args: professor (Professor): Instância da classe Professor."""
+        
         for t in professor.turmas_associadas:
             if t.ano_letivo == self.ano_letivo and t.id_turma != self._id_turma:
                 print(f"Aviso: Professor {professor.nome} já possui alocação no ano {self.ano_letivo}.")
@@ -141,12 +133,37 @@ class Turma:
 
         Returns:
             dict: Nome da turma e lista de professores."""
-        nomes = [p.nome for p in self._professores_regentes]
-        return {
+        nomes_professores = [p.nome for p in self._professores_regentes]
+        return{ 
             "Turma": self._nome,
             "Turno": self.turno,
-            "Professores": nomes if nomes else "Nenhum alocado"
+            "Professores": nomes_professores 
         }
+    
+    def registrar_nota_no_sistema(self, aluno, disciplina, valor, tipo, data_prova):
+        """Armazena o registro completo: Nota, Tipo e Data."""
+        registro = {
+            "aluno_id": aluno.id_matricula,
+            "disciplina": disciplina,
+            "valor": valor,     
+            "tipo": tipo,        # Ex: "Prova 1", "Simulado"
+            "data": data_prova   # Objeto date (permite extrair o mês)
+        }
+        self._notas_da_turma.append(registro)
+
+    def calcular_media_mensal(self, disciplina, mes, tipo):
+        """Calcula a média da turma filtrando por mês e tipo de avaliação."""
+        notas_filtradas = [
+            n['valor'] for n in self._notas_da_turma 
+            if n['disciplina'] == disciplina 
+            and n['data'].month == mes 
+            and n['tipo'] == tipo
+        ]
+        
+        if not notas_filtradas:
+            return 0.0
+            
+        return round(sum(notas_filtradas) / len(notas_filtradas), 2)
     
     def registrar_aula(self, professor, data, conteudo: str):
         """Registra uma aula no diário de classe.
@@ -154,15 +171,8 @@ class Turma:
         Valida:
             - Se o professor pertence à turma
             - Se a data é do tipo date
-            - Se o conteúdo possui tamanho mínimo
+            - Se o conteúdo possui tamanho mínimo"""
 
-        Args:
-            professor (Professor): Professor responsável pela aula.
-            data (date): Data da aula.
-            conteudo (str): Conteúdo ministrado.
-
-        Returns:
-            bool: True se registrada com sucesso, False caso contrário."""
         if professor not in self._professores_regentes:
             print(f"Erro: O professor {professor.nome} não leciona nesta turma.")
             return False
