@@ -112,12 +112,16 @@ class Professor(Usuario):
             f"="*40
         )
 
-    def lancar_nota(self, turma, aluno, disciplina, valor):
+    def lancar_nota(self, turma, aluno, disciplina, valor, tipo, data_prova):
         """Função para que o professor lance a nota de cada Aluno"""
         if aluno not in turma.alunos_matriculados or turma not in self._turmas_associadas:
             return "Erro de permissão: Vínculo inválido entre professor, turma ou aluno."
 
         aluno.adicionar_nota(disciplina, valor)
+
+        turma.registrar_nota_no_sistema(aluno, disciplina, valor, tipo, data_prova)
+        
+        return f"Nota lançada com sucesso para {aluno.nome}."
             
     def enviar_material(self, turma, nome_material, link):
         """Função para que o professor envie um material para a turma desejada"""
