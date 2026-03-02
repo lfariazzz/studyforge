@@ -1,5 +1,5 @@
 from src.models.demanda import Demanda
-from core.configuracoes import Configuracoes
+from src.core.configuracoes import Configuracoes
 
 class DemandaInfraestrutura(Demanda):
     """
@@ -7,11 +7,15 @@ class DemandaInfraestrutura(Demanda):
     processo de solicitação que validam as informações, nível de importância e coleta os 
     dados dos envolvidos. 
     """
-    def __init__(self, id_demanda, descricao, prioridade, solicitante, custo_estimado, escola):
-        super().__init__(id_demanda, descricao, prioridade, solicitante)
+    def __init__(self, id_demanda, descricao, prioridade, solicitante, custo_estimado, escola, municipio_responsavel):
+
+        id_muni = municipio_responsavel.id_municipio if municipio_responsavel else None
+
+        super().__init__(id_demanda, id_muni, descricao, prioridade, solicitante, municipio_responsavel)
         self._custo_estimado = custo_estimado
         self._escola = escola
         self.config = Configuracoes
+
 
     def validar_usuario(self, usuario):
         """
@@ -79,14 +83,14 @@ class DemandaInfraestrutura(Demanda):
         ### conferir se é gestor ou secretário e na variável municipio
         ### fica guardado o municipio de fato. 
 
-        solicitante_obj = self.solicitante 
+        solicitante_obj = self._solicitante 
 
         if hasattr(solicitante_obj, 'municipio_responsavel'):
             municipio = solicitante_obj.municipio_responsavel 
         else:
             municipio = solicitante_obj.escola_associada.municipio 
 
-        if self.__custo_estimado > municipio.verba_disponivel_municipio:                
+        if self._custo_estimado > municipio.verba_disponivel_municipio:                
             raise ValueError("Custo excede o limite do município.")
 
 
@@ -96,12 +100,12 @@ class DemandaInfraestrutura(Demanda):
         #Salva quem solicitou a demanda e em que horas solicitou essa demanda. 
         self.atualizar(usuario)
 
-        self.__status = "PENDENTE"
+        self._status = "PENDENTE"
     
         return True 
     
 
-    def aprovar_demanda(self, usuario): 
+    def processar_solicitacao(self, usuario): 
         """
         Realiza a aprovação oficial de uma demanda pendente.
 

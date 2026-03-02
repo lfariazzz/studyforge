@@ -1,105 +1,136 @@
 import sys
 import os
 
-# Garante que o Python encontre a pasta src
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# Adiciona o diretório raiz do projeto ao sys.path para conseguir importar src
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.models.demanda_infraestrutura import DemandaInfraestrutura
+# Importações atualizadas
+from src.models.demanda import Demanda
 from src.models.demanda_pedagogica import DemandaPedagogica
+from src.models.demanda_infraestrutura import DemandaInfraestrutura
 
-# --- CLASSES SIMULADAS PARA O TESTE ---
-# Isso evita erros de "AttributeError" já que suas classes navegam entre objetos
-class MockMunicipio:
-    def __init__(self, id_m): self.id_municipio = id_m
+# --- MOCKS / SIMULAÇÕES DE CLASSES DEPENDENTES ---
+class Municipio:
+    def __init__(self, id_municipio, nome, verba, lacuna_max, media_freq):
+        self.id_municipio = id_municipio
+        self.nome = nome
+        self.verba_disponivel_municipio = verba
+        self.lacuna_maxima_permitida = lacuna_max
+        self.media_frequencia = media_freq
 
-class MockEscola:
-    def __init__(self, muni): self.municipio = muni
+class Escola:
+    def __init__(self, nome, municipio):
+        self.nome = nome
+        self.municipio = municipio
 
-class MockGestor:
-    def __init__(self, escola, nome):
+class Turma:
+    def __init__(self, nome, alunos):
+        self.nome = nome
+        self._alunos_matriculados = alunos 
+    
+    @property
+    def quantidade_alunos_sala(self):
+        return len(self._alunos_matriculados)
+
+class Gestor:
+    def __init__(self, nome, escola):
         self.nome = nome
         self.escola_associada = escola
 
-class MockSecretario:
-    def __init__(self, muni, nome):
+class Secretario:
+    def __init__(self, nome, municipio):
         self.nome = nome
-        self.municipio_responsavel = muni
+        self.municipio_responsavel = municipio
 
-class MockTurma:
-    def __init__(self, nome, alunos):
-        self.nome = nome
-        self._alunos_matriculados = alunos
+# --- CÓDIGO DE TESTE ---
+def testar_sistema_demandas():
+    print("Iniciando testes funcionais...\n")
 
-# --- EXECUÇÃO DOS TESTES ---
-def rodar_testes():
-    print("\n=== STUDYFORGE: TESTE INTEGRADO DE DEMANDAS ===\n")
-
-    # 1. Setup de Dados
-    juazeiro = MockMunicipio("CE-JUA")
-    escola_padre_cicero = MockEscola(juazeiro)
+    # 1. Configuração do Cenário (Juazeiro)
+    muni_juazeiro = Municipio("JUA01", "Juazeiro", 50000.0, 0.30, 0.75)
+    escola_padre_cicero = Escola("Padre Cicero", muni_juazeiro)
     
-    gestor_pedro = MockGestor(escola_padre_cicero, "Pedro Gestor")
-    secretaria_ana = MockSecretario(juazeiro, "Ana Secretaria")
+    gestor_pedro = Gestor("Pedro", escola_padre_cicero)
+    secretario_maria = Secretario("Maria", muni_juazeiro)
     
-    turma_9ano = MockTurma("9º Ano A", ["Aluno 1", "Aluno 2", "Aluno 3", "Aluno 4", "Aluno 5"])
+    # 5 alunos total
+    turma_1a = Turma("1º Ano A", ["A1", "A2", "A3", "A4", "A5"])
 
-    # 2. Testando Demanda de Infraestrutura
-    print("[TESTE 1] Criando Demanda de Infraestrutura...")
+    # --- Teste 1: Demanda Pedagógica ---
+    print("--- Teste 1: Demanda Pedagógica ---")
+    
+    # Cenário: 2 alunos em risco de 5 (40% de lacuna), freq 70%
+    # Passando municipio_responsavel (muni_juazeiro)
+    
+    # --- AJUSTE: Passando apenas os argumentos necessários ---
+    demanda_ped = DemandaPedagogica(
+        "PED01", "Reforço Matemática", "MÉDIA", gestor_pedro,
+        turma_1a, 2, 0.70, 
+        muni_juazeiro # <--- id_municipio não é mais passado explicitamente aqui
+    )
+
+    print(f"Lacuna: {demanda_ped.indice_lacuna * 100:.1f}% (Limite: {muni_juazeiro.lacuna_maxima_permitida * 100}%)")
+    print(f"Freq: {demanda_ped.frequencia_atual * 100:.1f}% (Meta: {muni_juazeiro.media_frequencia * 100}%)")
+    
+    # Processa e verifica se o status mudou
+    demanda_ped.processar_solicitacao(gestor_pedro)
+    print(f"Status Final: {demanda_ped.status}")
+    
+    assert demanda_ped.status == "REFORÇO NECESSÁRIO"
+    print("Teste 1 OK!\n")
+
+    # --- Teste 2: Demanda Infraestrutura ---
+    print("--- Teste 2: Demanda Infraestrutura ---")
+    
+    # Demanda cara (R$ 60.000) mas verba é R$ 50.000
+    # Adicionado municipio_responsavel na chamada
+    demanda_infra = DemandaInfraestrutura(
+        "INF01", "Reforma Telhado", "ALTA", gestor_pedro, 
+        60000.0, escola_padre_cicero, 
+        muni_juazeiro
+    )
+
+    # Tentar solicitar deve falhar por falta de verba
     try:
-        infra = DemandaInfraestrutura(
-            id_demanda="INF-001",
-            descricao="Reforma da Quadra",
-            prioridade="ALTA",
-            solicitante=gestor_pedro,
-            custo_estimado=5000,
-            escola="Pátio Central"
-        )
-        
-        # Implementando o método que o ABC exige para o teste passar
-        # (Adicionei aqui como um monkeypatch caso você não tenha salvado no arquivo ainda)
-        infra.processar_solicitacao = lambda u: print(f"-> Processado por: {u.nome}")
-        
-        infra.solicitar_demanda(gestor_pedro)
-        print(f"✓ Status após solicitação: {infra.status}")
-        
-        infra.aprovar_demanda(secretaria_ana)
-        print(f"✓ Status após aprovação: {infra.status}")
-        
-    except Exception as e:
-        print(f"X Erro Infra: {e}")
+        demanda_infra.solicitar_demanda(gestor_pedro)
+        print("Erro: Deveria ter falhado por falta de verba.")
+    except ValueError as e:
+        print(f"Sucesso: Erro de verba capturado -> {e}")
 
-    print("-" * 40)
+    # Demanda barata (R$ 10.000)
+    demanda_infra_barata = DemandaInfraestrutura(
+        "INF02", "Pintura", "BAIXA", gestor_pedro, 
+        10000.0, escola_padre_cicero,
+        muni_juazeiro
+    )
 
-    # 3. Testando Demanda Pedagógica
-    print("[TESTE 2] Criando Demanda Pedagógica (Baixa Frequência)...")
+    # Solicitar
+    demanda_infra_barata.solicitar_demanda(gestor_pedro)
+    print(f"Status após solicitação: {demanda_infra_barata.status}")
+    assert demanda_infra_barata.status == "ABERTO"
+
+    # Aprovar pelo Secretário
+    demanda_infra_barata.processar_solicitacao(secretario_maria)
+    print(f"Status após aprovação: {demanda_infra_barata.status}")
+    assert demanda_infra_barata.status == "APROVADO"
+    
+    print("Teste 2 OK!\n")
+
+    # --- Teste 3: Validação de Jurisdição ---
+    print("--- Teste 3: Validação de Jurisdição ---")
+    muni_crato = Municipio("CRA01", "Crato", 100000.0, 0.30, 0.75)
+    secretario_crato = Secretario("João", muni_crato)
+    
+    # O teste utiliza o método validar_usuario que agora está na classe pai
     try:
-        # Simulando 3 alunos em risco de 5 (60% - deve gerar reforço)
-        pedagogica = DemandaPedagogica(
-            id_demanda="PED-001",
-            descricao="Reforço Matemática",
-            prioridade="CRÍTICO",
-            solicitante=gestor_pedro,
-            turma=turma_9ano,
-            media_mensal=0.70, # 70% (Abaixo dos 75% da regra)
-            alunos_abaixo_media=3
-        )
+        # A demanda_infra_barata pertence a Juazeiro, secretário do Crato tenta acessar
+        demanda_infra_barata.validar_usuario(secretario_crato)
+        print("Erro: Deveria ter falhado por jurisdição diferente.")
+    except PermissionError as e:
+        print(f"Sucesso: Erro de permissão capturado -> {e}")
 
-        pedagogica.emitir_notificacao_critica()
-        
-        # No seu código, você precisa garantir que DemandaPedagogica 
-        # tenha validar_usuario ou que ela use o da mãe.
-        # Vou simular o processamento:
-        print(f"-> Analisando reforço...")
-        if pedagogica.validar_reforco():
-            pedagogica.atualizar_status("REFORÇO NECESSÁRIO")
-            
-        print(f"✓ Status Final: {pedagogica.status}")
-        print(f"✓ Índice de Lacuna: {pedagogica.indice_lacuna * 100:.1f}%")
-
-    except Exception as e:
-        print(f"X Erro Pedagógico: {e}")
-
-    print("\n=== TESTES FINALIZADOS ===")
+    print("Teste 3 OK!\n")
+    print("Todos os testes passaram!")
 
 if __name__ == "__main__":
-    rodar_testes()
+    testar_sistema_demandas()

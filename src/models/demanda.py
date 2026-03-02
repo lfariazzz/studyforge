@@ -21,45 +21,37 @@ class Demanda(ABC, AuditMixin):
     """
     Classe base seguindo os nomes definidos no UML.
     """
-    def __init__(self, id_demanda, descricao, prioridade, solicitante, municipio_responsavel):
+    def __init__(self, id_demanda, id_municipio, descricao, prioridade, solicitante, municipio_responsavel):
         AuditMixin.__init__(self)
         ABC.__init__(self)
 
         self.__descricao = descricao       
         self.__status = "ABERTO"           
-        self.__prioridade = prioridade.upper() 
-        self.__solicitante = solicitante   
+        self.__prioridade = prioridade.upper()  
         self.municipio_responsavel = municipio_responsavel
-
-        @property
-        def id_municipio(self):
-            """
-            Busca o ID do município navegando pelos objetos dos colegas (RN01).
-            Isso evita que o código quebre se o atributo não estiver direto no solicitante.
-            """
+        self.__id_municipio = id_municipio
+        self._solicitante = solicitante  
+        
+    @property
+    def id_municipio(self):
         #1. Se for um secretário
-        if hasattr(self.__solicitante, 'municipio_responsavel'):
-            # Acessa: Solicitante -> Municipio -> id_municipio
-            return self.__solicitante.municipio_responsavel.id_municipio
+        if hasattr(self._solicitante, 'municipio_responsavel'):
+            return self._solicitante.municipio_responsavel.id_municipio
         
         #2. Se for um Gestor 
-        if hasattr(self.__solicitante, 'escola_associada'):
-            # Acessa: Solicitante -> Escola -> Municipio -> id_municipio
-            return self.__solicitante.escola_associada.municipio.id_municipio
+        if hasattr(self._solicitante, 'escola_associada'):
+            return self._solicitante.escola_associada.municipio.id_municipio
 
-        return None 
-
+        return None
 
     @property 
     def status(self):
         """Permite que o atributo status seja utilizado nas outras classes"""
         return self.__status
 
-
-    @property
     def solicitante(self):
         """Permite que as filhas acessem o objeto solicitante para auditoria"""
-        return self.__solicitante
+        return self.solicitante
 
     @property 
     def id_demanda(self):
