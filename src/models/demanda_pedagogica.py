@@ -6,9 +6,12 @@ class DemandaPedagogica(Demanda):
     problemas de frequência e desempenho escolar (lacunas de aprendizado).
     """
     def __init__(self, id_demanda, descricao, prioridade, solicitante, 
-                 turma, alunos_abaixo_media, frequencia_apurada):
+                 turma, alunos_abaixo_media, frequencia_apurada, municipio_responsavel):
+        
+        id_muni = municipio_responsavel.id_municipio if municipio_responsavel else None
         # 1. Dados básicos enviados para a classe pai
-        super().__init__(id_demanda, descricao, prioridade, solicitante)
+        super().__init__(id_demanda, id_muni, descricao, prioridade, solicitante, municipio_responsavel)
+
 
         
         # 2. Atributos da Demanda
@@ -34,12 +37,14 @@ class DemandaPedagogica(Demanda):
         """Retorna a média de frequência que o Avaliador calculou."""
         return self.__media_frequencia_apurada
     
+
+    
     def validar_reforco(self):
         """
         Aplica a regra de negócio para decidir se a turma precisa de reforço.
         Regra: Lacuna >= 40% dos alunos OU Frequência < Meta do Município
         """
-        solicitante_obj = self.solicitante
+        solicitante_obj = self._solicitante
 
         # 1. Navega até o objeto Município para buscar as metas
         if hasattr(solicitante_obj, 'municipio_responsavel'):
@@ -57,8 +62,6 @@ class DemandaPedagogica(Demanda):
         """
         Analisa os dados vindos do Avaliador e define o status final da demanda.
         """
-        # Verifica permissões (Município/Perfil)
-        self.validar_usuario(usuario)
         
         if self.validar_reforco(): 
             relatorio = (
