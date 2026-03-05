@@ -2,6 +2,7 @@ from src.models.demanda_pedagogica import DemandaPedagogica
 from src.models.demanda_infraestrutura import DemandaInfraestrutura
 from src.core.configuracoes import Configuracoes
 from src.services.avaliador_frequencia import AvaliadorFrequencia
+from src.services.avaliador_infraestrutura import AvaliadorInfraestrutura
 import uuid
 
 class DemandaFactory:
@@ -69,25 +70,41 @@ class DemandaFactory:
             else:
                 raise ValueError("Contexto Acadêmico Faltando: Informe a turma para a demanda pedagógica.")
             
-        # --- BLOCO: DEMANDA INFRAESTRUTURA (Custos/Manutenção) ---
+            # --- BLOCO: DEMANDA INFRAESTRUTURA (Custos/Manutenção) ---
         elif tipo_demanda.upper() == "INFRAESTRUTURA":
+            # 1. Captura os dados específicos enviados via kwargs
             custo_estimado = kwargs.get("custo_estimado", 0)
             localizacao_demanda = kwargs.get("localizacao_demanda")
 
-            # Regra de Negócio RN03: Se ultrapassar o limite, a prioridade sobe e exige autorização.
-            if custo_estimado > DemandaFactory.config.LIMITE_CUSTO_DEMANDA:
-                prioridade = "MAXIMA"
-                aviso_sistema = "\n[ALERTA]: Valor acima do limite. Requer aprovação do Secretário."
-                descricao = (descricao + aviso_sistema) if descricao else aviso_sistema
-            
-            nova_demanda = DemandaInfraestrutura(id_demanda, descricao, prioridade, solicitante, 
-                                                 custo_estimado, localizacao_demanda)
-            
-            # Status inicial condicionado à prioridade
-            if prioridade == "MAXIMA":
-                nova_demanda.atualizar_status("AGUARDANDO LICITACAO")
+            # 2. Identifica o município para carregar a regra correta (15k? 50k?)
+            # Verificamos se o solicitante tem o atributo direto ou via escola
+            if hasattr(solicitante, 'municipio_responsavel'):
+                mun_nome = solicitante.municipio_responsavel.nome
+            else:
+                mun_nome = solicitante.escola_associada.municipio.nome
 
+            # 3. Instancia o "Juiz" (Avaliador) para esse município específico
+            avaliador = AvaliadorInfraestrutura(mun_nome)
+
+            # 4. O Coração da RN03: O Avaliador decide o status baseado no custo
+            # Se o custo >= LIMITE_CUSTO_DEMANDA, ele retorna "EM LICITAÇÃO"
+            status_sugerido = avaliador.avaliar_status(custo_estimado)
+
+            # 5. Criação do objeto Real (Instanciação)
+            # Passamos os dados básicos e o "INFRAESTRUTURA" para o super da mãe
+            nova_demanda = DemandaInfraestrutura(
+                id_demanda=id_demanda, 
+                descricao=descricao, 
+                prioridade=prioridade, 
+                solicitante=solicitante, 
+                custo_estimado=custo_estimado, 
+                localizacao_demanda=localizacao_demanda
+            )
+            
+            # 6. Aplica o status definido pelo Avaliador
+            nova_demanda.atualizar_status(status_sugerido)
+
+            if "LICITAÇÃO" in status_sugerido:
+                nova_demanda.registrar_alerta(f"Custo R$ {custo_estimado} exige licitação (RN03)")
+            # 7. Entrega o objeto pronto
             return nova_demanda
-
-        else:
-            raise ValueError(f"Tipo de demanda '{tipo_demanda}' não reconhecido pela Factory.")

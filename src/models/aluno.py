@@ -9,7 +9,7 @@ Herda atributos base de Usuario e gerencia sua vida acadêmica.
 class Aluno(Usuario):
     def __init__(self, nome, cpf, email, senha, telefone, data_nascimento,
                 turma_associada = None):
-        super().__init__(nome, cpf, email, senha, telefone, data_nascimento)
+        super().__init__(nome, cpf, email, senha, telefone, data_nascimento, "ALUNO")
 
         ano_atual = datetime.now().year
         matricula_base = f"{self.id:06}"
