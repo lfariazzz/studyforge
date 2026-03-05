@@ -74,14 +74,14 @@ Este documento descreve a estrutura técnica do banco de dados SQLite do projeto
 | **data_nasc** | TEXT | NOT NULL | Data de nascimento (Formato YYYY-MM-DD). |
 | **status** | TEXT | DEFAULT 'ATIVO', CHECK(status IN ('ATIVO', 'INATIVO')) | Controle de acesso ao sistema. |
 | **login** | TEXT | UNIQUE, NOT NULL | Nome de usuário único para acesso. |
-| **tipo_perfil** | TEXT | CHECK(perfil IN ('SEC','GES','PRO','ALU')) | Discriminador para lógica RBAC. |
+| **perfil** | TEXT | CHECK(perfil IN ('SEC','GES','PRO','ALU')) | Discriminador para lógica RBAC. |
 
 
 ### Tabela: `secretario` (Tabela filha)
 | Campo | Tipo | Restrições | Descrição |
 | :--- | :--- | :--- | :--- |
 | **id_usuario** | INTEGER | PK, FK(usuario.id_usuario) | Identificador vinculado ao usuário. |
-| **id_municipio** | TEXT | FK(municipio.id_municipio) | Município onde o secretário atua. |
+| **id_municipio** | INTEGER | FK(municipio.id_municipio) | Município onde o secretário atua. |
 | **departamento** | TEXT | NOT NULL | Setor específico da secretaria (ex: "Financeiro", "Pedagógico"). |
 
 ### Tabela: `gestor` (Tabela filha)
@@ -102,8 +102,8 @@ Este documento descreve a estrutura técnica do banco de dados SQLite do projeto
 | Campo | Tipo | Restrições | Descrição |
 | :--- | :--- | :--- | :--- |
 | **id_usuario** | INTEGER | PK, FK(usuario.id_usuario) | Identificador vinculado ao usuário. |
-| **id_turma** | INTEGER | FK(turma.id_turma) | Turma atual onde o aluno frequenta as aulas. |
-| **id_matricula** | INTEGER | UNIQUE, NOT NULL | Registro de matrícula único do aluno na rede. |
+| **id_turma** | INTEGER | FK(turma.id_turma), ON DELETE RESTRICT | Turma atual onde o aluno frequenta as aulas. |
+| **matricula** | TEXT | UNIQUE, NOT NULL | Registro de matrícula único do aluno na rede. |
 
 
 
