@@ -10,7 +10,7 @@ class DemandaPedagogica(Demanda):
         
         id_muni = municipio_responsavel.id_municipio if municipio_responsavel else None
         # 1. Dados básicos enviados para a classe pai
-        super().__init__(id_demanda, id_muni, descricao, prioridade, solicitante, municipio_responsavel)
+        super().__init__(id_demanda, id_muni, descricao, prioridade, solicitante, municipio_responsavel, "PEDAGÓGICA")
 
 
         

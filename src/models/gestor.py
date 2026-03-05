@@ -2,7 +2,7 @@ from src.models.usuario import Usuario
 
 class Gestor(Usuario):
     def __init__(self, nome, cpf, email, senha, telefone, data_nascimento, escola_associada):
-        super().__init__(nome, cpf, email, senha, telefone, data_nascimento)
+        super().__init__(nome, cpf, email, senha, telefone, data_nascimento, "GESTOR")
 
         self.escola_associada = escola_associada
 
