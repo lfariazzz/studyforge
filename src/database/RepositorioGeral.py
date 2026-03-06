@@ -205,3 +205,10 @@ class RepositorioGeral:
                             
         self.cursor.executescript(codigo_SQL)
         self.connect.commit()
+
+    def salvar_municipio(self, municipio_obj):
+        dados = municipio_obj.to_dict()
+        codigo_SQL = ('''INSERT INTO municipio (nome, uf, verba_disponivel) VALUES (?,?,?)''')
+        self.cursor.execute(codigo_SQL, (dados["nome"], dados["estado"], dados["verba_disponivel_municipio"]))
+        self.connect.commit()
+
