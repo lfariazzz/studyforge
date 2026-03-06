@@ -105,21 +105,17 @@ Este documento descreve a estrutura técnica do banco de dados SQLite do projeto
 | **id_turma** | INTEGER | FK(turma.id_turma), ON DELETE RESTRICT | Turma atual onde o aluno frequenta as aulas. |
 | **matricula** | TEXT | UNIQUE, NOT NULL | Registro de matrícula único do aluno na rede. |
 
-
-
----
-
----
-
-## 📝 4. Registros e Avaliações
+## 📝 3. Registros e Avaliações
 
 ### Tabela: `nota`
 | Campo | Tipo | Restrições | Descrição |
 | :--- | :--- | :--- | :--- |
 | **id_nota** | INTEGER | PK | Identificador do registro de nota. |
-| **valor** | REAL | CHECK(valor >= 0 AND valor <= 10) | Valor numérico da avaliação. |
 | **id_aluno** | INTEGER | FK(aluno) | Aluno avaliado. |
 | **id_turma** | INTEGER | FK(turma) | Contexto para cálculo de média da turma. |
+| **valor** | REAL | CHECK(valor >= 0 AND valor <= 10) | Valor numérico da avaliação. |
+| **data** | TEXT | NOT NULL | Data da realização da avaliação a qual teve a nota atribuída. |
+| **tipo** | TEXT | NOT NULL | Tipo de avaliação à qual a nota foi atribuída. |
 
 ### Tabela: `diario`
 | Campo | Tipo | Restrições | Descrição |
@@ -137,6 +133,20 @@ Este documento descreve a estrutura técnica do banco de dados SQLite do projeto
 | **status** | INTEGER | CHECK(status IN (0,1)) | 1 para Presente, 0 para Ausente. |
 | **id_aluno** | INTEGER | FK(aluno) | Aluno em questão. |
 | **id_diario** | INTEGER | FK(diario) | Vínculo com a aula registrada. |
+
+
+
+
+
+
+
+
+---
+
+---
+
+
+
 
 ---
 
