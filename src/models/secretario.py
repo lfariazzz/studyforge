@@ -3,7 +3,7 @@ from src.models.usuario import Usuario
 class Secretario(Usuario):
     def __init__(self, nome, cpf, email, senha, telefone, data_nascimento,
                  municipio_responsavel, departamento):
-        super().__init__(nome, cpf, email, senha, telefone, data_nascimento)
+        super().__init__(nome, cpf, email, senha, telefone, data_nascimento, "SECRETÁRIO")
 
         self.municipio_responsavel = municipio_responsavel
         self.departamento = departamento

@@ -11,7 +11,7 @@ class Professor(Usuario):
     def __init__(self, nome, cpf, email, senha, telefone, data_nascimento,
                  registro_funcional, escola_associada, titulacao, area_atuacao, 
                  salario):
-        super().__init__(nome, cpf, email, senha, telefone, data_nascimento)
+        super().__init__(nome, cpf, email, senha, telefone, data_nascimento, "PROFESSOR")
         
         self.registro_funcional = registro_funcional
         self.escola_associada = escola_associada

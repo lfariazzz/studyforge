@@ -10,7 +10,7 @@ instanciada diretamente.
 """
 class Usuario(ABC):
     _contador_id = 1
-    def __init__(self, nome, cpf, email, senha, telefone, data_nascimento):
+    def __init__(self, nome, cpf, email, senha, telefone, data_nascimento, tipo):
         self._id = Usuario._contador_id
         Usuario._contador_id += 1
         self.nome = nome
@@ -21,6 +21,7 @@ class Usuario(ABC):
         self.data_nascimento = data_nascimento
         self._login = False
         self._status = True
+        self._tipo = tipo 
 
     #-----------------
     #GETTERS E SETTERS
