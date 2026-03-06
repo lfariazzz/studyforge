@@ -1,5 +1,4 @@
 from src.core.configuracoes import Configuracoes
-from src.core.demanda_factory import DemandaFactory
 class AvaliadorFrequencia:
     """Classe responsável por monitorar a frequência escolar e validar a RN02.
 
@@ -77,4 +76,7 @@ class AvaliadorFrequencia:
             alunos_abaixo_media = self.qtd_alunos_abaixo_media_frequencia(turma, mes)
             demanda_evasao = DemandaFactory.criar_demanda("PEDAGOGICA", "SISTEMA", None,turma=turma, 
                                                media_mensal=media_mensal, alunos_abaixo_media=alunos_abaixo_media)
+                                               
             return demanda_evasao
+        
+ 
