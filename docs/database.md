@@ -110,88 +110,88 @@ Este documento descreve a estrutura técnica do banco de dados SQLite do projeto
 ### Tabela: `nota`
 | Campo | Tipo | Restrições | Descrição |
 | :--- | :--- | :--- | :--- |
-| **id_nota** | INTEGER | PK | Identificador do registro de nota. |
-| **id_aluno** | INTEGER | FK(aluno) | Aluno avaliado. |
+| **id_nota** | INTEGER | PK, AUTOINCREMENT | Identificador do registro de nota. |
+| **id_aluno** | INTEGER | FK(aluno.id_usuario), ON DELETE RESTRICT | Aluno avaliado. |
 | **id_turma** | INTEGER | FK(turma) | Contexto para cálculo de média da turma. |
-| **valor** | REAL | CHECK(valor >= 0 AND valor <= 10) | Valor numérico da avaliação. |
+| **disciplina** | TEXT | NOT NULL | Nome da matéria. |
+| **valor** | REAL | NOT NULL, CHECK(valor >= 0 AND valor <= 10) | Valor numérico da avaliação. |
 | **data** | TEXT | NOT NULL | Data da realização da avaliação a qual teve a nota atribuída. |
 | **tipo** | TEXT | NOT NULL | Tipo de avaliação à qual a nota foi atribuída. |
 
 ### Tabela: `diario`
 | Campo | Tipo | Restrições | Descrição |
 | :--- | :--- | :--- | :--- |
-| **id_diario** | INTEGER | PK | Identificador do registro diário. |
+| **id_diario** | INTEGER | PK, AUTOINCREMENT | Identificador do registro diário. |
+| **id_professor** | INTEGER | FK(professor.id_usuario), ON DELETE RESTRICT | Docente que realizou o registro. |
+| **id_turma** | INTEGER | FK(turma.id_turma), ON DELETE RESTRICT | Turma que recebeu a aula. |
+| **disciplina** | TEXT | NOT NULL | Nome da matéria. |
 | **data** | TEXT | NOT NULL | Data da aula (Formato ISO: YYYY-MM-DD). |
 | **conteudo** | TEXT | NOT NULL | Descrição do que foi lecionado. |
-| **id_professor** | INTEGER | FK(professor) | Docente que realizou o registro. |
-| **id_turma** | INTEGER | FK(turma) | Turma que recebeu a aula. |
+
 
 ### Tabela: `frequencia`
 | Campo | Tipo | Restrições | Descrição |
 | :--- | :--- | :--- | :--- |
-| **id_frequencia** | INTEGER | PK | Identificador da presença. |
-| **status** | INTEGER | CHECK(status IN (0,1)) | 1 para Presente, 0 para Ausente. |
-| **id_aluno** | INTEGER | FK(aluno) | Aluno em questão. |
-| **id_diario** | INTEGER | FK(diario) | Vínculo com a aula registrada. |
-
-
-
-
-
-
-
-
----
-
----
-
-
-
-
----
+| **id_frequencia** | INTEGER | PK, AUTOINCREMENT | Identificador da presença. |
+| **id_aluno** | INTEGER | FK(aluno.id_usuario), ON DELETE RESTRICT | Aluno em questão. |
+| **id_diario** | INTEGER | FK(diario.id_diario), ON DELETE CASCADE | Vínculo com a aula registrada. |
+| **status** | TEXT | NOT NULL, CHECK(status IN ('PRESENTE', 'AUSENTE')) | Indica se o aluno compareceu ou faltou. |
 
 ## 🚨 5. Demandas e Monitoramento
 
 ### Tabela: `demanda` (Pai)
 | Campo | Tipo | Restrições | Descrição |
 | :--- | :--- | :--- | :--- |
-| **id_demanda** | INTEGER | PK | Identificador do chamado. |
-| **status** | TEXT | DEFAULT 'PENDENTE' | PENDENTE, APROVADO, RECUSADO. |
-| **id_solicitante** | INTEGER | FK(usuario) | Usuário que abriu a demanda. |
-| **id_municipio** | INTEGER | FK(municipio) | Município responsável pela resolução. |
+| **id_demanda** | INTEGER | PK, AUTOINCREMENT | Identificador do chamado. |
+| **id_solicitante** | INTEGER | FK(usuario.id_usuario) | Usuário que abriu a demanda. |
+| **id_municipio** | INTEGER | FK(municipio.id_municipio) | Município responsável pela resolução. |
+| **descricao** | TEXT | NOT NULL | Detalhamento completo da necessidade. |
+| **status** | TEXT | DEFAULT 'PENDENTE', CHECK(status IN ('PENDENTE', 'APROVADO', 'RECUSADO', 'EM_EXECUCAO', 'CONCLUIDO')) | Estado atual do processo. |
+| **prioridade** | TEXT | NOT NULL, CHECK(prioridade IN ('BAIXA', 'MEDIA', 'ALTA', 'URGENTE')) | Nível de criticidade da demanda. |
 
 ### Tabela: `demanda_infraestrutura` (Filha)
 | Campo | Tipo | Restrições | Descrição |
 | :--- | :--- | :--- | :--- |
-| **id_demanda** | INTEGER | PK, FK(demanda) | Identificador e vínculo de herança. |
-| **custo_estimado** | REAL | NOT NULL | Valor solicitado para o reparo. |
-| **id_escola** | INTEGER | FK(escola) | Escola alvo da melhoria. |
+| **id_demanda** | INTEGER | PK, FK(demanda.id_demanda) | Identificador e vínculo de herança. |
+| **id_escola** | INTEGER | FK(escola.id_escola), ON DELETE RESTRICT | Escola alvo da melhoria. |
+| **custo_estimado** | REAL | NOT NULL, CHECK(custo_estimado >= 0) | Valor solicitado para o reparo. |
+
+### Tabela: `endereco_demanda_infra` (Filha)
+| **id_demanda** | INTEGER | PK,FK(demanda_infraestrutura.id_demanda) | Identificador da demanda à qual este endereço pertence. |
+| **id_localizacao** | INTEGER | PK | Diferenciador para múltiplos endereços na mesma demanda. |
+| **cep** | TEXT | NOT NULL | Código de Endereçamento Postal. |
+| **rua** | TEXT | NOT NULL | Nome da rua/avenida. |
+| **numero** | TEXT | NOT NULL | Número (ou "S/N"). |
+| **bairro** | TEXT | NOT NULL | Bairro ou setor da obra/reparo. |
+
+
 
 ### Tabela: `demanda_pedagogica` (Filha)
 | Campo | Tipo | Restrições | Descrição |
 | :--- | :--- | :--- | :--- |
-| **id_demanda** | INTEGER | PK, FK(demanda) | Identificador e vínculo de herança. |
-| **indice_lacuna** | REAL | NOT NULL | Valor da lacuna calculada pela IA. |
-| **id_turma** | INTEGER | FK(turma) | Turma alvo da intervenção. |
-
----
+| **id_demanda** | INTEGER | PK, FK(demanda.id_demanda) | Identificador e vínculo de herança. |
+| **id_turma** | INTEGER | FK(turma.id_turma), ON DELETE RESTRICT | Turma alvo da intervenção. |
+| **indice_lacuna** | REAL | NOT NULL, CHECK(indice_lacuna >= 0) | Valor da lacuna calculada. |
+| **frequencia_alvo** | REAL | NOT NULL, CHECK(frequencia_alvo >= 0 AND frequencia_alvo <= 1) | Índice de frequência que disparou o alerta. |
 
 ## 🔗 6. Relacionamentos Muitos-para-Muitos (N:N)
 
 ### Tabela: `professor_escola_alocado`
-Associação entre docentes e unidades escolares.
 | Campo | Tipo | Restrições |
 | :--- | :--- | :--- |
 | **id_professor** | INTEGER | PK, FK(professor.id_usuario) |
 | **id_escola** | INTEGER | PK, FK(escola.id_escola) |
 
 ### Tabela: `professor_turma_alocado`
-Associação entre docentes e turmas lecionadas.
 | Campo | Tipo | Restrições |
 | :--- | :--- | :--- |
 | **id_professor** | INTEGER | PK, FK(professor.id_usuario) |
 | **id_turma** | INTEGER | PK, FK(turma.id_turma) |
 
+---
+---
+---
+---
 ---
 
 ## 🛡️ 7. Políticas de Integridade Referencial
