@@ -70,6 +70,8 @@ class AvaliadorFrequencia:
         """Valida a RN02, verificando a media de frequencia mensal da turma e 
         gerando uma demanda automaticamente caso esteja abaixo do limite"""
 
+        from src.core.demanda_factory  import DemandaFactory
+
         media_mensal = self.media_presenca_mensal_turma(turma, mes)
         if media_mensal < self.frequencia_minima:
             print(f"Média de presença mensal da turma {media_mensal}\n Gerando demanda pedagógica...")
