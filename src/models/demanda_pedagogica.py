@@ -23,7 +23,7 @@ class DemandaPedagogica(Demanda):
         self.__relatorio_alunos = relatorio_alunos
         self.__disciplina_alvo = disciplina_alvo
         self.__indice_lacuna = indice_lacuna
-
+        self.prioridade = prioridade
 
         # --- MUDANÇA AQUI ---
         # Recebemos a frequência que o AvaliadorFrequencia calculou

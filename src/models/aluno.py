@@ -16,8 +16,8 @@ class Aluno(Usuario):
 
         self._id_matricula = f"{ano_atual}.{matricula_base[:3]}.{matricula_base[3:]}"
         self.turma_associada = turma_associada 
-        self._notas = {}
-        self._historico_frequencia = [] 
+        self.notas = []
+        self.presencas = [] 
 
     # -----------------
     # GETTERS E SETTERS
