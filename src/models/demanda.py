@@ -47,6 +47,7 @@ class Demanda(ABC, AuditMixin):
         self.__id_municipio = id_municipio
         self._solicitante = solicitante  
         self._tipo = tipo 
+        
     @property
     def id_municipio(self):
         #1. Se for um secretário
