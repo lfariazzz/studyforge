@@ -10,7 +10,7 @@ class DemandaPedagogica(Demanda):
     """
 
     def __init__(self, id_demanda, descricao, prioridade, solicitante, 
-                 turma, frequencia_apurada, municipio_responsavel, disciplina_alvo, professor, relatorio_alunos):
+                 turma, frequencia_apurada, municipio_responsavel, disciplina_alvo, professor, relatorio_alunos, indice_lacuna):
         
         id_muni = municipio_responsavel.id_municipio if municipio_responsavel else None
         # 1. Dados básicos enviados para a classe pai
@@ -19,9 +19,10 @@ class DemandaPedagogica(Demanda):
         # 2. Atributos da Demanda
         self.__turma_alvo = turma
         self.__qtd_alunos_em_risco = len(relatorio_alunos)
-        self.__professor_responsavel = professor 
+        self.__professor_responsavel = professor    
         self.__relatorio_alunos = relatorio_alunos
         self.__disciplina_alvo = disciplina_alvo
+        self.__indice_lacuna = indice_lacuna
 
 
         # --- MUDANÇA AQUI ---
@@ -33,10 +34,8 @@ class DemandaPedagogica(Demanda):
 
     @property
     def indice_lacuna(self):
-        """Calcula a proporção de alunos em risco em relação ao total da turma."""
-        if self.__total_alunos == 0:
-            return 0.0
-        return self.__qtd_alunos_em_risco / self.__total_alunos
+        """Retorna o indice lacuna calculado em AvaliadorLacuna"""
+        return self.__indice_lacuna
 
     @property
     def frequencia_atual(self):
