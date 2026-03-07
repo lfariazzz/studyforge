@@ -134,7 +134,7 @@ class Aluno(Usuario):
         if not self._notas:
             return "Nenhuma nota foi lançada no sistema até o momento."
 
-        exibicao = [f"--- 📝 BOLETIM ESCOLAR: {self.nome} ---"]
+        exibicao = [f"--- BOLETIM ESCOLAR: {self.nome} ---"]
         
         for disciplina, lista_notas in self._notas.items():
             media = sum(lista_notas) / len(lista_notas) if lista_notas else 0
@@ -217,3 +217,4 @@ class Aluno(Usuario):
         })
 
         return dados
+    

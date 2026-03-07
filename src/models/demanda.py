@@ -25,6 +25,13 @@ class AuditMixin:
         # demanda de infraestrutura.
         self._alerta_auditoria = mensagem
 
+    def registrar_data_demanda_pedagogica(self):
+        momento_exato = datetime.now()
+        #Data formatada
+        data = momento_exato.strftime("%d/%m/%Y %H:%M:%S")
+
+        return f"Data: {data} "
+
 class Demanda(ABC, AuditMixin):
     """
     Classe base seguindo os nomes definidos no UML.
