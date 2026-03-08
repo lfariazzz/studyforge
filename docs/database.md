@@ -18,15 +18,20 @@ Este documento descreve a estrutura técnica do banco de dados SQLite do projeto
 | :--- | :--- | :--- | :--- |
 | **id_municipio** | INTEGER | PK, AUTOINCREMENT | Identificador único da instância municipal. |
 | **nome** | TEXT | NOT NULL | Nome oficial da cidade. |
-| **uf** | TEXT | NOT NULL, CHECK(length(uf)=2) | Sigla do estado (ex: "CE"). |
-| **verba_disponivel**| REAL | DEFAULT 0.0 | Saldo total para demandas de infraestrutura. |
+
+| **uf(->estado)** | TEXT | NOT NULL, CHECK(length(uf)=2) | Sigla do estado (ex: "CE"). |
+| **verba_disponivel (->verba_disponivel_municipio)**| REAL | DEFAULT 0.0 | Saldo total para demandas de infraestrutura. |
+**(media_frequencia)**
+**(lacuna_maxima_permitida)**
+**(nota_de_corte)**
+
 
 ### Tabela: `escola`
 | Campo | Tipo | Restrições | Descrição |
 | :--- | :--- | :--- | :--- |
 | **id_escola** | INTEGER | PK, AUTOINCREMENT | Identificador da unidade. |
 | **nome** | TEXT | NOT NULL | Nome da instituição escolar. |
-| **verba_disponivel** | REAL | DEFAULT 0.0 | Saldo total para demandas escolares. |
+| **verba_disponivel(->verba_disponivel_escola)** | REAL | DEFAULT 0.0 | Saldo total para demandas escolares. |
 | **id_municipio** | INTEGER | FK(municipio) | Município mantenedor. |
 | **id_gestor** | INTEGER | FK(gestor) | Gestor responsável. |
 
@@ -57,7 +62,7 @@ Este documento descreve a estrutura técnica do banco de dados SQLite do projeto
 | **id_config** | INTEGER | PK, AUTOINCREMENT | Identificador da configuração. |
 | **id_municipio** | INTEGER | FK(municipio), UNIQUE | **Unicidade Multiton (1:1).** |
 | **frequencia_minima**| REAL | NOT NULL, DEFAULT 0.75, CHECK(frequencia_minima >= 0 AND frequencia_minima <= 1) | Limite para alerta de abandono (0.0 a 1.0). |
-| **indice_lacuna_maximo**| REAL | NOT NULL, DEFAULT 0.3, CHECK(indice_lacuna_maximo >= 0) | Diferença máxima permitida
+| **indice_lacuna_minimo**| REAL | NOT NULL, DEFAULT 0.3, CHECK(indice_lacuna_maximo >= 0) | Diferença máxima permitida
 | **limite_custo_demanda** | REAL | NOT NULL, DEFAULT 15000.0, CHECK(limite_custo_demanda > 0) | Teto orçamentário
 
 ## 👥 2. Identidade e Acesso (Herança: Subclasse)
@@ -65,7 +70,7 @@ Este documento descreve a estrutura técnica do banco de dados SQLite do projeto
 ### Tabela: `usuario` (Tabela Pai)
 | Campo | Tipo | Restrições | Descrição |
 | :--- | :--- | :--- | :--- |
-| **id_usuario** | INTEGER | PK, AUTOINCREMENT | Identificador base para todos os perfis. |
+| **id_usuario**(renomear no python) | INTEGER | PK, AUTOINCREMENT | Identificador base para todos os perfis. |
 | **cpf** | TEXT | UNIQUE, NOT NULL | CPF do usuário. |
 | **nome** | TEXT | NOT NULL | Nome completo. |
 | **email** | TEXT | UNIQUE, NOT NULL | E-mail institucional ou pessoal. |
