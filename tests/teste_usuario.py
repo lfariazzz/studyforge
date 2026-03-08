@@ -1,3 +1,7 @@
+"""
+Para executar este teste, use o comando:
+    python -m unittest tests.teste_usuario.TestUsuario -v
+"""
 import sys
 import os
 import re

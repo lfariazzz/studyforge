@@ -33,36 +33,21 @@ class AuditMixin:
         data = momento_exato.strftime("%d/%m/%Y %H:%M:%S")
 
         return f"Data: {data} "
-    
-    def registrar_marco(self, autor, descricao):
-        """Registra uma ação de auditoria"""
-        registro = {
-            "autor": autor,
-            "descricao": descricao,
-            "data": datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-        }
-
-        self.historico_marcos.append(registro)
-
-        print(f"[AUDITORIA] Marco registrado: {descricao} por {autor}")
-
-
 
 class Demanda(ABC, AuditMixin):
     """
     Classe base seguindo os nomes definidos no UML.
     """
-    def __init__(self, id_demanda, id_municipio, descricao, prioridade, solicitante, tipo, municipio_responsavel):
+    def __init__(self, id_demanda, descricao, prioridade, solicitante, municipio_responsavel, tipo):
         AuditMixin.__init__(self)
         ABC.__init__(self)
 
+        self.__id_demanda = id_demanda
         self.__descricao = descricao       
-        self.__status = "ABERTO"           
+        self.__status = "PENDENTE"           
         self.__prioridade = prioridade.upper()  
         self.municipio_responsavel = municipio_responsavel
-        self._id_municipio = id_municipio
         self._solicitante = solicitante  
-        self._id_demanda = id_demanda
         self._tipo = tipo 
         
     @property

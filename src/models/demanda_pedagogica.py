@@ -1,23 +1,30 @@
 from src.models.demanda import Demanda 
+from src.models.aluno import Aluno
+from src.models.turma import Turma
+from src.services.avaliador_lacuna import AvaliadorLacuna
 
 class DemandaPedagogica(Demanda):
     """
     Representa uma demanda gerada automaticamente ou manualmente para tratar
     problemas de frequência e desempenho escolar (lacunas de aprendizado).
     """
+
     def __init__(self, id_demanda, descricao, prioridade, solicitante, 
-                 turma, alunos_abaixo_media, frequencia_apurada, municipio_responsavel):
+                 turma, frequencia_apurada, municipio_responsavel, disciplina_alvo, professor, relatorio_alunos, indice_lacuna):
         
         id_muni = municipio_responsavel.id_municipio if municipio_responsavel else None
         # 1. Dados básicos enviados para a classe pai
-        super().__init__(id_demanda, id_muni, descricao, prioridade, solicitante, municipio_responsavel)
+        super().__init__(id_demanda, id_muni, descricao, prioridade, solicitante, municipio_responsavel, "PEDAGÓGICA")
 
-
-        
         # 2. Atributos da Demanda
         self.__turma_alvo = turma
-        self.__qtd_alunos_em_risco = alunos_abaixo_media
-        
+        self.__qtd_alunos_em_risco = len(relatorio_alunos)
+        self.__professor_responsavel = professor    
+        self.__relatorio_alunos = relatorio_alunos
+        self.__disciplina_alvo = disciplina_alvo
+        self.__indice_lacuna = indice_lacuna
+        self.prioridade = prioridade
+
         # --- MUDANÇA AQUI ---
         # Recebemos a frequência que o AvaliadorFrequencia calculou
         self.__media_frequencia_apurada = frequencia_apurada
@@ -27,18 +34,20 @@ class DemandaPedagogica(Demanda):
 
     @property
     def indice_lacuna(self):
-        """Calcula a proporção de alunos em risco em relação ao total da turma."""
-        if self.__total_alunos == 0:
-            return 0.0
-        return self.__qtd_alunos_em_risco / self.__total_alunos
+        """Retorna o indice lacuna calculado em AvaliadorLacuna"""
+        return self.__indice_lacuna
 
     @property
     def frequencia_atual(self):
         """Retorna a média de frequência que o Avaliador calculou."""
         return self.__media_frequencia_apurada
     
+    @property 
+    def disciplina_alvo(self):
+        """Retorna a disciplina alvo"""
+        return self.__disciplina_alvo
 
-    
+
     def validar_reforco(self):
         """
         Aplica a regra de negócio para decidir se a turma precisa de reforço.
@@ -64,12 +73,29 @@ class DemandaPedagogica(Demanda):
         """
         
         if self.validar_reforco(): 
+
+            lista_formatada = "\n".join([f"  • {aluno['nome']} (Média: {aluno['media']:.1f})" for aluno in self.__relatorio_alunos])
+
             relatorio = (
-                f"--- ANÁLISE PEDAGÓGICA: {self.__turma_alvo.nome} ---\n"
-                f"Status: REFORÇO NECESSÁRIO\n"
-                f"Frequência Apurada: {self.frequencia_atual * 100:.1f}%\n"
-                f"Alunos em Risco: {self.__qtd_alunos_em_risco} ({self.indice_lacuna * 100:.1f}%)"
-            )
+            f"\n"
+            f"--- RELATÓRIO DE MONITORAMENTO PEDAGÓGICO ---\n"
+            f"DATA: {self.registrar_data_demanda_pedagogica()}\n"
+            f"PROFESSOR(A): {self.__professor_responsavel}\n"
+            f"DISCIPLINA: {self.__disciplina_alvo}\n"
+            f"TURMA: {self.__turma_alvo.nome}\n"
+            f"----------------------------------------------\n"
+            f"STATUS: REFORÇO NECESSÁRIO\n"
+            f"FREQUÊNCIA APURADA: {self.__media_frequencia_apurada * 100:.1f}%\n"
+            f"ALUNOS EM RISCO: {self.__qtd_alunos_em_risco} de {self.__total_alunos}\n"
+            f"ÍNDICE DE LACUNA: {self.indice_lacuna * 100:.1f}%\n"
+            f"----------------------------------------------\n"
+            f"LISTA DE ESTUDANTES:\n"
+            f"{lista_formatada}"    
+            f"----------------------------------------------\n"
+        )
+            
+            #Salva o texto no objeto ao invés de dar print. 
+            self.alerta_gerado = relatorio
 
             self.atualizar_status("REFORÇO NECESSÁRIO")
             self.atualizar(usuario)
