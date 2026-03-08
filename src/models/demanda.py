@@ -36,15 +36,15 @@ class Demanda(ABC, AuditMixin):
     """
     Classe base seguindo os nomes definidos no UML.
     """
-    def __init__(self, id_demanda, id_municipio, descricao, prioridade, solicitante, municipio_responsavel, tipo):
+    def __init__(self, id_demanda, descricao, prioridade, solicitante, municipio_responsavel, tipo):
         AuditMixin.__init__(self)
         ABC.__init__(self)
 
+        self.__id_demanda = id_demanda
         self.__descricao = descricao       
-        self.__status = "ABERTO"           
+        self.__status = "PENDENTE"           
         self.__prioridade = prioridade.upper()  
         self.municipio_responsavel = municipio_responsavel
-        self.__id_municipio = id_municipio
         self._solicitante = solicitante  
         self._tipo = tipo 
         

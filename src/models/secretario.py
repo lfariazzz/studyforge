@@ -1,9 +1,9 @@
 from src.models.usuario import Usuario
 
 class Secretario(Usuario):
-    def __init__(self, nome, cpf, email, senha, telefone, data_nascimento,
+    def __init__(self, id_usuario,  nome, cpf, email, senha, telefone, data_nascimento,
                  municipio_responsavel, departamento):
-        super().__init__(nome, cpf, email, senha, telefone, data_nascimento, "SECRETÁRIO")
+        super().__init__(id_usuario, nome, cpf, email, senha, telefone, data_nascimento, "SECRETÁRIO")
 
         self.municipio_responsavel = municipio_responsavel
         self.departamento = departamento

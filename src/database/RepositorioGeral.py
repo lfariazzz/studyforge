@@ -11,45 +11,48 @@ class RepositorioGeral:
     def _criar_tabelas(self):
         codigo_SQL =    ('''
     CREATE TABLE IF NOT EXISTS usuario(
-	"id_usuario"	INTEGER,
+	"id_usuario"	INTEGER PRIMARY KEY AUTOINCREMENT,
 	"cpf"	TEXT NOT NULL UNIQUE,
 	"nome"	TEXT NOT NULL,
 	"email"	TEXT NOT NULL UNIQUE,
 	"senha"	TEXT NOT NULL,
 	"telefone"	TEXT NOT NULL CHECK(length("telefone") = 10 OR length("telefone") = 11),
-	"data_nasc"	TEXT NOT NULL,
-	"status"	TEXT DEFAULT 'ATIVO' CHECK("status" IN ('ATIVO', 'INATIVO')),
-	"login"	TEXT NOT NULL UNIQUE,
-	"perfil"	TEXT CHECK("perfil" IN ('SEC', 'GES', 'PRO', 'ALU')),
-	PRIMARY KEY("id_usuario" AUTOINCREMENT)
+	"data_nascimento"	TEXT NOT NULL,
+    "login"	INTEGER DEFAULT 0,
+	"status"	INTEGER  DEFAULT 1,
+	"tipo"	TEXT CHECK("tipo" IN ('SECRETÁRIO', 'GESTOR', 'PROFESSOR', 'ALUNO'))
     ); 
                          
     CREATE TABLE IF NOT EXISTS municipio(
 	"id_municipio"	INTEGER,
 	"nome"	TEXT NOT NULL,
-	"uf"	TEXT NOT NULL CHECK(length("uf") = 2),
-	"verba_disponivel"	REAL DEFAULT 0.0,
+	"estado"	TEXT NOT NULL CHECK(length("estado") = 2),
+	"verba_disponivel_municipio"	REAL DEFAULT 0.0,
+	"nota_de_corte" REAL DEFAULT 7.0,
 	PRIMARY KEY("id_municipio" AUTOINCREMENT)
     );
                          
     CREATE TABLE IF NOT EXISTS gestor(
-	"id_usuario"	INTEGER,
-	PRIMARY KEY("id_usuario"),
-	FOREIGN KEY("id_usuario") REFERENCES "usuario"("id_usuario") ON DELETE CASCADE
-    );
+    "id_usuario"    INTEGER PRIMARY KEY,
+    "id_escola"     INTEGER, -- Referencia escola_associada na classe
+    FOREIGN KEY("id_escola") REFERENCES "escola"("id_escola"),
+    FOREIGN KEY("id_usuario") REFERENCES "usuario"("id_usuario") ON DELETE CASCADE
+	);
                          
     CREATE TABLE IF NOT EXISTS escola(
-	"id_escola"	INTEGER,
+	"id_escola"	INTEGER PRIMARY KEY AUTOINCREMENT,
 	"nome"	TEXT NOT NULL,
-	"verba_disponivel"	REAL DEFAULT 0.0,
-	"id_municipio"	INTEGER,
-	"id_gestor"	INTEGER,
-	PRIMARY KEY("id_escola" AUTOINCREMENT),
+	"verba_disponivel_escola"	REAL DEFAULT 0.0,
+    "capacidade_infraestrutura" 	INTEGER DEFAULT 500,     
+	"id_municipio"	INTEGER, -- referencia municipio na classe
+	"id_gestor"	INTEGER, -- referencia gestor_atual na classe
+    "id_localizacao" INTEGER, -- referencia endereco na classe
 	FOREIGN KEY("id_gestor") REFERENCES "gestor"("id_usuario"),
-	FOREIGN KEY("id_municipio") REFERENCES "municipio"("id_municipio")
+	FOREIGN KEY("id_municipio") REFERENCES "municipio"("id_municipio"),
+    FOREIGN KEY("id_localizacao") REFERENCES "escola_endereco"("id_localizacao")
     );
                          
-    CREATE TABLE IF NOT EXISTS endereco_escola(
+    CREATE TABLE IF NOT EXISTS escola_endereco(
 	"id_escola"	INTEGER,
 	"id_localizacao"	INTEGER,
 	"cep"	TEXT NOT NULL,
@@ -64,7 +67,7 @@ class RepositorioGeral:
 	"id_turma"	INTEGER,
 	"nome"	TEXT NOT NULL,
 	"ano_letivo"	INTEGER NOT NULL,
-	"turno"	TEXT NOT NULL CHECK("turno" IN ('MATUTINO', 'VESPERTINO', 'NOTURNO', 'INTEGRAL')),
+	"turno"	TEXT NOT NULL CHECK("turno" IN ('MANHÃ', 'TARDE', 'NOITE', 'INTEGRAL')),
 	"capacidade_maxima"	INTEGER NOT NULL,
 	"id_escola"	INTEGER,
 	PRIMARY KEY("id_turma" AUTOINCREMENT),
@@ -74,39 +77,39 @@ class RepositorioGeral:
     CREATE TABLE IF NOT EXISTS secretario(
 	"id_usuario"	INTEGER,
 	"departamento"	TEXT NOT NULL,
-	"id_municipio"	INTEGER,
+	"id_municipio"	INTEGER, -- Referencia municipio_responsável no init da classe
 	PRIMARY KEY("id_usuario"),
 	FOREIGN KEY("id_municipio") REFERENCES "municipio"("id_municipio"),
 	FOREIGN KEY("id_usuario") REFERENCES "usuario"("id_usuario") ON DELETE CASCADE
     );
                          
     CREATE TABLE IF NOT EXISTS professor(
-	"id_usuario"	INTEGER,
+	"id_usuario"	INTEGER PRIMARY KEY,
 	"salario"	REAL NOT NULL CHECK("salario" > 0),
 	"titulacao"	TEXT NOT NULL,
 	"area_atuacao"	TEXT NOT NULL,
-	"registro_funcao"	TEXT NOT NULL UNIQUE,
-	PRIMARY KEY("id_usuario"),
-	FOREIGN KEY("id_usuario") REFERENCES "usuario"("id_usuario") ON DELETE CASCADE
+	"registro_funcional"	TEXT NOT NULL UNIQUE,
+    "id_escola" INTEGER,
+	FOREIGN KEY("id_usuario") REFERENCES "usuario"("id_usuario") ON DELETE CASCADE,
+    FOREIGN KEY("id_escola") REFERENCES "escola"("id_escola")
     );
                          
     CREATE TABLE IF NOT EXISTS aluno(
-	"id_usuario"	INTEGER,
+	"id_usuario"	INTEGER PRIMARY KEY,
 	"matricula"	TEXT NOT NULL UNIQUE,
-	"id_turma"	INTEGER,
-	PRIMARY KEY("id_usuario"),
+	"id_turma"	INTEGER, -- Referencia turma_associada na classe
 	FOREIGN KEY("id_turma") REFERENCES "turma"("id_turma") ON DELETE RESTRICT,
 	FOREIGN KEY("id_usuario") REFERENCES "usuario"("id_usuario") ON DELETE CASCADE
     );
                          
     CREATE TABLE IF NOT EXISTS demanda(
-	"id_demanda"	INTEGER,
+	"id_demanda"	INTEGER PRIMARY KEY AUTOINCREMENT,
 	"descricao"	TEXT NOT NULL,
 	"status"	TEXT DEFAULT 'PENDENTE' CHECK("status" IN ('PENDENTE', 'APROVADO', 'RECUSADO', 'EM_EXECUCAO', 'CONCLUIDO')),
 	"prioridade"	TEXT NOT NULL CHECK("prioridade" IN ('BAIXA', 'MEDIA', 'ALTA', 'URGENTE')),
-	"id_solicitante"	INTEGER,
-	"id_municipio"	INTEGER,
-	PRIMARY KEY("id_demanda" AUTOINCREMENT),
+	"id_solicitante"	INTEGER, -- Referencia solicitante na classe
+	"id_municipio"	INTEGER, -- Referencia municipio_responsavel na classe
+    "tipo" TEXT CHECK("tipo" IN('INFRAESTRUTURA', 'PEDAGÓGICA'),
 	FOREIGN KEY("id_municipio") REFERENCES "municipio"("id_municipio"),
 	FOREIGN KEY("id_solicitante") REFERENCES "usuario"("id_usuario")
     );
@@ -132,11 +135,10 @@ class RepositorioGeral:
     );
                          
     CREATE TABLE IF NOT EXISTS demanda_pedagogica(
-	"id_demanda"	INTEGER,
+	"id_demanda"	INTEGER PRIMARY KEY,
 	"indice_lacuna"	REAL NOT NULL CHECK("indice_lacuna" >= 0.0 AND "indice_lacuna" <= 1.0),
 	"frequencia_alvo"	REAL NOT NULL CHECK("frequencia_alvo" <= 1.0 AND "frequencia_alvo" >= 0),
 	"id_turma"	INTEGER,
-	PRIMARY KEY("id_demanda"),
 	FOREIGN KEY("id_demanda") REFERENCES "demanda"("id_demanda"),
 	FOREIGN KEY("id_turma") REFERENCES "turma"("id_turma") ON DELETE RESTRICT
     );
@@ -181,7 +183,7 @@ class RepositorioGeral:
 	"frequencia_minima"	REAL DEFAULT 0.75 CHECK("frequencia_minima" >= 0 AND "frequencia_minima" <= 1),
 	"indice_lacuna_maximo"	REAL DEFAULT 0.3 CHECK("indice_lacuna_maximo" >= 0 AND "indice_lacuna_maximo" <= 1),
 	"limite_custo_demanda"	REAL DEFAULT 15000.0 CHECK("limite_custo_demanda" >= 0),
-	"id_municipio"	INTEGER UNIQUE,
+	"id_municipio"	INTEGER UNIQUE, -- referencia municipio na classe
 	PRIMARY KEY("id_config" AUTOINCREMENT),
 	FOREIGN KEY("id_municipio") REFERENCES "municipio"("id_municipio")
     );

@@ -7,15 +7,18 @@ Herda atributos base de Usuario e gerencia sua vida acadêmica.
 """
 
 class Aluno(Usuario):
-    def __init__(self, nome, cpf, email, senha, telefone, data_nascimento,
-                turma_associada = None):
-        super().__init__(nome, cpf, email, senha, telefone, data_nascimento, "ALUNO")
+    def __init__(self, id_usuario, nome, cpf, email, senha, telefone, data_nascimento,
+                turma_associada = None, matricula = None):
+        super().__init__(id_usuario, nome, cpf, email, senha, telefone, data_nascimento, "ALUNO")
 
-        ano_atual = datetime.now().year
-        matricula_base = f"{self.id:06}"
-
-        self._id_matricula = f"{ano_atual}.{matricula_base[:3]}.{matricula_base[3:]}"
         self.turma_associada = turma_associada 
+
+        if matricula:
+            self._id_matricula = matricula
+        else:
+            ano = datetime.now().year
+            self._id_matricula = f"{ano}{self._id}"
+
         self.notas = []
         self.presencas = [] 
 

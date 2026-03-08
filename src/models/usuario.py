@@ -3,34 +3,33 @@ import re
 from datetime import datetime
 
 """
-Representa a entidade base para todos os usuários do sistema StudyForge. 
+Representa a entid_usuarioade base para todos os usuários do sistema StudyForge. 
 Esta é uma classe abstrata (ABC) que define os atributos e métodos comuns 
 a todos os perfis (Professor, Aluno, Gestor e Secretario). Não deve ser 
 instanciada diretamente.
 """
 class Usuario(ABC):
-    _contador_id = 1
-    def __init__(self, nome, cpf, email, senha, telefone, data_nascimento, tipo):
-        self._id = Usuario._contador_id
-        Usuario._contador_id += 1
+    def __init__(self, id_usuario, nome, cpf, email, senha, telefone, data_nascimento, tipo, login=False, status=True):
+        self._id_usuario = id_usuario
         self.nome = nome
         self.cpf = cpf
         self.email = email
         self.senha = senha
         self.telefone = telefone
         self.data_nascimento = data_nascimento
-        self._login = False
-        self._status = True
         self._tipo = tipo 
+        self._login = login
+        self._status = status
+
 
     #-----------------
     #GETTERS E SETTERS
     #-----------------
 
     @property
-    def id(self):
-        """Permite ler o ID, mas sem altera-lo diretamente"""
-        return self._id
+    def id_usuario(self):
+        """Permite ler o id_usuario, mas sem altera-lo diretamente"""
+        return self._id_usuario
     @property
     def nome(self):
         return self._nome
@@ -42,7 +41,7 @@ class Usuario(ABC):
         padrao_nome = r'^[A-Za-zÀ-ÖØ-öø-ÿ\s]+$'
 
         if not re.match(padrao_nome, valor):
-            raise ValueError("Erro: Nome inválido! Use apenas letras.")
+            raise ValueError("Erro: Nome inválid_usuarioo! Use apenas letras.")
         else:
             self._nome = valor.strip().title()
             
@@ -73,7 +72,7 @@ class Usuario(ABC):
         padrao = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
 
         if not re.match(padrao, valor):
-            raise ValueError("Erro: Formato de email inválido!")
+            raise ValueError("Erro: Formato de email inválid_usuarioo!")
         
         else:
             self._email = valor.lower().strip()
@@ -121,13 +120,13 @@ class Usuario(ABC):
         if not isinstance(valor, str):
             raise TypeError("Erro: A data deve ser uma string no formato DD/MM/AAAA!")
         try:
-            data_convertida = datetime.strptime(valor, "%d/%m/%Y")
-            if data_convertida > datetime.now():
-                raise ValueError("Erro: Data de nascimento inválida!")
-            self._data_nascimento = data_convertida
+            data_convertid_usuarioa = datetime.strptime(valor, "%d/%m/%Y")
+            if data_convertid_usuarioa > datetime.now():
+                raise ValueError("Erro: Data de nascimento inválid_usuarioa!")
+            self._data_nascimento = data_convertid_usuarioa
         
         except ValueError:
-            raise ValueError("Erro: Data inválida! Use o formato DD/MM/AAAA (ex: 02/08/2003).") 
+            raise ValueError("Erro: Data inválid_usuarioa! Use o formato DD/MM/AAAA (ex: 02/08/2003).") 
         
     @property
     def status(self):
@@ -166,7 +165,7 @@ class Usuario(ABC):
         if not self._status:
             raise PermissionError("Erro: Esta conta está desativada, por favor entrar em contato com a secretaria.")
         if senha_tentativa != self._senha or email_tentativa != self._email:
-            raise  ValueError("Erro: Email ou senha inválidos.")
+            raise  ValueError("Erro: Email ou senha inválid_usuarioos.")
         
         self._login = True
         return True
@@ -182,14 +181,14 @@ class Usuario(ABC):
     def trocar_senha(self, verificador, nova_senha):
         """Lógica para alterar a senha"""
         if verificador != self._senha:
-            raise ValueError("Erro: Senha anterior inválida.")
+            raise ValueError("Erro: Senha anterior inválid_usuarioa.")
         
         self.senha = nova_senha
 
     def to_dict(self):
         return {
             "tipo": self.__class__.__name__,
-            "id": self._id, 
+            "id_usuario": self._id_usuario, 
             "nome": self._nome,
             "cpf": self._cpf,
             "email": self._email,

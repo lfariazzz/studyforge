@@ -31,3 +31,4 @@ class Frequencia:
             "id_diario": self.__id_diario,
             "status": self.status
         }
+    

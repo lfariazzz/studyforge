@@ -8,10 +8,10 @@ Herda atributos base de Usuario e adiciona dados funcionais e acadêmicos.
 """
 class Professor(Usuario):
     """Construtor da classe Professor."""
-    def __init__(self, nome, cpf, email, senha, telefone, data_nascimento,
+    def __init__(self, id_usuario, nome, cpf, email, senha, telefone, data_nascimento,
                  registro_funcional, escola_associada, titulacao, area_atuacao, 
                  salario):
-        super().__init__(nome, cpf, email, senha, telefone, data_nascimento, "PROFESSOR")
+        super().__init__(id_usuario, nome, cpf, email, senha, telefone, data_nascimento, "PROFESSOR")
         
         self.registro_funcional = registro_funcional
         self.escola_associada = escola_associada
