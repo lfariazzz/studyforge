@@ -12,9 +12,7 @@ class DemandaPedagogica(Demanda):
     def __init__(self, id_demanda, descricao, prioridade, solicitante, 
                  turma, frequencia_apurada, municipio_responsavel, disciplina_alvo, professor, relatorio_alunos, indice_lacuna):
         
-        id_muni = municipio_responsavel.id_municipio if municipio_responsavel else None
-        # 1. Dados básicos enviados para a classe pai
-        super().__init__(id_demanda, id_muni, descricao, prioridade, solicitante, municipio_responsavel, "PEDAGÓGICA")
+        super().__init__(id_demanda, descricao, prioridade, solicitante, municipio_responsavel, "PEDAGÓGICA")
 
         # 2. Atributos da Demanda
         self.__turma_alvo = turma
@@ -100,6 +98,7 @@ class DemandaPedagogica(Demanda):
             self.atualizar_status("REFORÇO NECESSÁRIO")
             self.atualizar(usuario)
         else: 
+            self.alerta_gerado = "RELATÓRIO: O desempenho e a frequência da turma estão dentro da normalidade"
             self.atualizar_status("REGULAR")
             self.atualizar(usuario)
             
