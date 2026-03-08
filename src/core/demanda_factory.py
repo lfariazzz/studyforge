@@ -53,7 +53,7 @@ class DemandaFactory:
             if not municipio and hasattr(turma_selecionada, 'escola'):
                 municipio = turma_selecionada.escola.municipio
 
-            nova_demanda = DemandaPedagogica(
+            return DemandaPedagogica(
                 id_demanda, 
                 descricao, 
                 prioridade, 
@@ -78,7 +78,7 @@ class DemandaFactory:
                 mun_nome = solicitante.escola_associada.municipio.nome
 
             avaliador_infra = AvaliadorInfraestrutura(mun_nome)
-            status_sugerido = avaliador_infra.avaliar_custo(custo_estimado) # existia avaliar_status mudei pq nao ixistia esse metodo no valiadorinflaestrutura
+            status_sugerido = avaliador_infra.avaliar_status(custo_estimado)
 
             nova_demanda = DemandaInfraestrutura(
                 id_demanda=id_demanda, 
@@ -86,23 +86,12 @@ class DemandaFactory:
                 prioridade=prioridade, 
                 solicitante=solicitante, 
                 custo_estimado=custo_estimado, 
-                localizacao_demanda=localizacao_demanda,
-                escola=solicitante.escola_associada,
-                municipio_responsavel=solicitante.escola_associada.municipio,
-
+                localizacao_demanda=localizacao_demanda
             )
             
             nova_demanda.atualizar_status(status_sugerido)
 
             if "LICITAÇÃO" in status_sugerido:
                 nova_demanda.registrar_alerta(f"Custo R$ {custo_estimado} exige licitação (RN03)")
-        
-        # ---GATILHO DO OBSERVER---
-        if nova_demanda and notificador:
-            notificador.notificar(nova_demanda, tipo_demanda.upper())
-
-        # --- FINALMENTE O RETURN ---
-        if nova_demanda is None:
-            raise ValueError(f"Tipo de demanda '{tipo_demanda}' não reconhecido.") 
-           
-        return nova_demanda
+            
+            return nova_demanda

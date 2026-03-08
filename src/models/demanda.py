@@ -16,21 +16,37 @@ class AuditMixin:
         agora = datetime.now()
         data_formatada = agora.strftime("%d/%m/%Y %H:%M:%S")
         
+    def registrar_alerta(self, mensagem):
+        """
+        Guarda uma nota fiscal/jurídica sobre a demanda 
+        sem precisar mudar o nome do 'usuario_que_alterou'.
+        """
+        #O nome é genérico para esse método do mixin servir tanto para demanda pedagógica quando para 
+        # demanda de infraestrutura.
+        self._alerta_auditoria = mensagem
+
+    def registrar_data_demanda_pedagogica(self):
+        momento_exato = datetime.now()
+        #Data formatada
+        data = momento_exato.strftime("%d/%m/%Y %H:%M:%S")
+
+        return f"Data: {data} "
 
 class Demanda(ABC, AuditMixin):
     """
     Classe base seguindo os nomes definidos no UML.
     """
-    def __init__(self, id_demanda, id_municipio, descricao, prioridade, solicitante, municipio_responsavel):
+    def __init__(self, id_demanda, descricao, prioridade, solicitante, municipio_responsavel, tipo):
         AuditMixin.__init__(self)
         ABC.__init__(self)
 
+        self.__id_demanda = id_demanda
         self.__descricao = descricao       
-        self.__status = "ABERTO"           
+        self.__status = "PENDENTE"           
         self.__prioridade = prioridade.upper()  
         self.municipio_responsavel = municipio_responsavel
-        self.__id_municipio = id_municipio
         self._solicitante = solicitante  
+        self._tipo = tipo 
         
     @property
     def id_municipio(self):
