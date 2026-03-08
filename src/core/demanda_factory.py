@@ -12,9 +12,10 @@ class DemandaFactory:
     config = Configuracoes()
 
     @staticmethod
-    def criar_demanda(tipo_demanda, solicitante, descricao=None, prioridade="NORMAL", **kwargs):
+    def criar_demanda(tipo_demanda, solicitante, descricao=None, prioridade="NORMAL", notificador=None,**kwargs):
         id_demanda = str(uuid.uuid4())
         turma_selecionada = kwargs.get("turma")
+        nova_demanda = None  # Variável para segurar o objeto antes do return
 
        # --- BLOCO: DEMANDA PEDAGÓGICA ---
         if tipo_demanda.upper() == "PEDAGOGICA":
