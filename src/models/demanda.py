@@ -8,6 +8,8 @@ class AuditMixin:
     def __init__(self):
         self._criado_em = datetime.now()
         self._alterado_por = None 
+        # Lista para armazenar o histórico de marcos (auditoria)
+        self.historico_marcos = []
 
     def atualizar(self, usuario_que_alterou):
         """Método que serve para registrar quem mexeu por último"""
@@ -16,12 +18,41 @@ class AuditMixin:
         agora = datetime.now()
         data_formatada = agora.strftime("%d/%m/%Y %H:%M:%S")
         
+    def registrar_alerta(self, mensagem):
+        """
+        Guarda uma nota fiscal/jurídica sobre a demanda 
+        sem precisar mudar o nome do 'usuario_que_alterou'.
+        """
+        #O nome é genérico para esse método do mixin servir tanto para demanda pedagógica quando para 
+        # demanda de infraestrutura.
+        self._alerta_auditoria = mensagem
+
+    def registrar_data_demanda_pedagogica(self):
+        momento_exato = datetime.now()
+        #Data formatada
+        data = momento_exato.strftime("%d/%m/%Y %H:%M:%S")
+
+        return f"Data: {data} "
+    
+    def registrar_marco(self, autor, descricao):
+        """Registra uma ação de auditoria"""
+        registro = {
+            "autor": autor,
+            "descricao": descricao,
+            "data": datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        }
+
+        self.historico_marcos.append(registro)
+
+        print(f"[AUDITORIA] Marco registrado: {descricao} por {autor}")
+
+
 
 class Demanda(ABC, AuditMixin):
     """
     Classe base seguindo os nomes definidos no UML.
     """
-    def __init__(self, id_demanda, id_municipio, descricao, prioridade, solicitante, municipio_responsavel):
+    def __init__(self, id_demanda, id_municipio, descricao, prioridade, solicitante, tipo, municipio_responsavel):
         AuditMixin.__init__(self)
         ABC.__init__(self)
 
@@ -29,8 +60,10 @@ class Demanda(ABC, AuditMixin):
         self.__status = "ABERTO"           
         self.__prioridade = prioridade.upper()  
         self.municipio_responsavel = municipio_responsavel
-        self.__id_municipio = id_municipio
+        self._id_municipio = id_municipio
         self._solicitante = solicitante  
+        self._id_demanda = id_demanda
+        self._tipo = tipo 
         
     @property
     def id_municipio(self):
@@ -56,7 +89,7 @@ class Demanda(ABC, AuditMixin):
     @property 
     def id_demanda(self):
         """Acesso apenas para leitura do ID conforme UML"""
-        return self.__id_demanda
+        return self._id_demanda
 
     @property 
     def descricao(self):
