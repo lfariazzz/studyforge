@@ -211,3 +211,4 @@ class Turma:
     def __str__(self):
         """Retorna representação textual da turma."""
         return f"Turma: {self._nome} - {self._ano_letivo} (ID: {self._id_turma})"
+    

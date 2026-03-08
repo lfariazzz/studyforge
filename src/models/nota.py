@@ -49,3 +49,4 @@ class Nota:
     @property
     def id_turma(self):
         return self.__id_turma
+    
