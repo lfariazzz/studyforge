@@ -8,6 +8,8 @@ class AuditMixin:
     def __init__(self):
         self._criado_em = datetime.now()
         self._alterado_por = None 
+        # Lista para armazenar o histórico de marcos (auditoria)
+        self.historico_marcos = []
 
     def atualizar(self, usuario_que_alterou):
         """Método que serve para registrar quem mexeu por último"""
@@ -72,7 +74,7 @@ class Demanda(ABC, AuditMixin):
     @property 
     def id_demanda(self):
         """Acesso apenas para leitura do ID conforme UML"""
-        return self.__id_demanda
+        return self._id_demanda
 
     @property 
     def descricao(self):
