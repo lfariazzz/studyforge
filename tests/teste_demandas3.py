@@ -83,7 +83,8 @@ def executar_teste():
             indice_lacuna=indice,
             disciplina_alvo="Matemática",
             professor=professor.nome,
-            frequencia_turma=0.82 # Simulação de frequência acima da meta
+            frequencia_turma=0.82, # Simulação de frequência acima da meta
+            mes = 3 
         )
 
         # 5. Processando a solicitação para formatar o texto do relatório

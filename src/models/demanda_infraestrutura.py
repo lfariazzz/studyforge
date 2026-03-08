@@ -11,7 +11,7 @@ class DemandaInfraestrutura(Demanda):
 
         id_muni = municipio_responsavel.id_municipio if municipio_responsavel else None
 
-        super().__init__(id_demanda, id_muni, descricao, prioridade, solicitante, municipio_responsavel, "INFRAESTRUTURA")
+        super().__init__(id_demanda, descricao, prioridade, solicitante, municipio_responsavel, "INFRAESTRUTURA")
         self._custo_estimado = custo_estimado
         self._escola = escola
         self.config = Configuracoes
