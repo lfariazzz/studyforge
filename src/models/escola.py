@@ -178,19 +178,13 @@ class Escola:
     def to_dict(self):
         """Converte os dados da escola em dicionário."""
         return {
-            "nome" : self._nome,
             "id_escola" : self._id_escola,
-            "gestor_atual": self._gestor_atual.nome if self._gestor_atual else None,
+            "nome" : self._nome,
             "verba_disponivel_escola" : self._verba_disponivel_escola,
-            "id_municipio" : self._id_municipio,
             "capacidade_infraestrutura": self._capacidade_infraestrutura,
-            "endereco_completo": str(self._endereco) if self._endereco else "Não informado",
-            "detalhes_endereco": {
-                "rua": self._endereco.rua,
-                "numero": self._endereco.numero,
-                "bairro": self._endereco.bairro,
-                "cep": self._endereco.cep
-            } if self._endereco else None
+            "id_municipio" : self._id_municipio,
+            "id_gestor": self._gestor_atual._id_usuario if self._gestor_atual else None,
+            "id_localizacao": self._endereco._id_endereco if self._endereco else None
         }
 
     def __str__(self):

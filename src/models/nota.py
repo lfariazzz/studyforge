@@ -8,9 +8,9 @@ class Nota:
         if not ( 0 <= valor <= 10):
             raise ValueError("Somente valores de 0 a 10 são permitidos para notas.")
         
-        self.__id_nota = id_nota
-        self.__id_aluno = id_aluno
-        self.__id_turma = id_turma 
+        self._id_nota = id_nota
+        self._id_aluno = id_aluno
+        self._id_turma = id_turma 
         self.disciplina = disciplina
         self.valor = float(valor) 
         self.data = data 
@@ -22,31 +22,31 @@ class Nota:
         Método para transformar as informações em dicionário para o Banco de Dados 
         """
         return {
-            "id_nota": self.__id_nota,
-            "id_aluno": self.__id_aluno,
-            "id_turma": self.__id_turma,
+            "id_nota": self._id_nota,
             "disciplina": self.disciplina,
             "valor": self.valor,
             "data": self.data, 
-            "tipo": self.tipo
+            "tipo": self.tipo,
+            "id_aluno": self._id_aluno,
+            "id_turma": self._id_turma,
         }
     
     def __repr__(self):
         """
         Facilita a leitura para testes
         """
-        return f"Nota(Aluno:{self.__id_aluno} | {self.disciplina}: {self.valor})"
+        return f"Nota(Aluno:{self._id_aluno} | {self.disciplina}: {self.valor})"
 
 
     @property
     def id_nota(self):
-        return self.__id_nota
+        return self._id_nota
     
     @property
     def id_aluno(self):
-        return self.__id_aluno
+        return self._id_aluno
     
     @property
     def id_turma(self):
-        return self.__id_turma
+        return self._id_turma
     

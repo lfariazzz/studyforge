@@ -14,3 +14,13 @@ class Endereco:
     def __str__(self):
         """Retorna o endereço formatado para exibição rápida."""
         return f"{self.rua}, {self.numero} - {self.bairro} | CEP: {self.cep}"
+    
+    def to_dict(self):
+        return {
+            "id_escola": self._id_escola,
+            "id_localizacao": self._id_localizacao,
+            "cep": self.cep,
+            "rua": self.rua,
+            "numero": self.numero,
+            "bairro": self.bairro
+        }

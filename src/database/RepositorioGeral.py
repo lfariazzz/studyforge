@@ -20,7 +20,7 @@ class RepositorioGeral:
 	"data_nascimento"	TEXT NOT NULL,
     "login"	INTEGER DEFAULT 0,
 	"status"	INTEGER  DEFAULT 1,
-	"tipo"	TEXT CHECK("tipo" IN ('SECRETÁRIO', 'GESTOR', 'PROFESSOR', 'ALUNO'))
+	"tipo"	TEXT CHECK("tipo" IN ('SECRETARIO', 'GESTOR', 'PROFESSOR', 'ALUNO'))
     ); 
                          
     CREATE TABLE IF NOT EXISTS municipio(
@@ -109,7 +109,7 @@ class RepositorioGeral:
 	"prioridade"	TEXT NOT NULL CHECK("prioridade" IN ('BAIXA', 'MEDIA', 'ALTA', 'URGENTE')),
 	"id_solicitante"	INTEGER, -- Referencia solicitante na classe
 	"id_municipio"	INTEGER, -- Referencia municipio_responsavel na classe
-    "tipo" TEXT CHECK("tipo" IN('INFRAESTRUTURA', 'PEDAGÓGICA')),
+    "tipo" TEXT CHECK("tipo" IN('INFRAESTRUTURA', 'PEDAGOGICA')),
     "data_criacao" TEXT NOT NULL, -- referencia criado_em na classe
 	"ultimo_editor" TEXT, -- referencia alterado_por na classe
     "data_alteracao" TEXT,  
