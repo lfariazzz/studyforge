@@ -350,11 +350,19 @@ class RepositorioGeral:
 			busca_tupla_sql = ('''SELECT * FROM usuario WHERE cpf = (:cpf)''')
 			self.cursor.execute(busca_tupla_sql, {"cpf": cpf_busca})
 			tupla_sql = self.cursor.fetchone()
+			usuario_obj = None
 			if tupla_sql:
-				usuario_obj = Usuario(tupla_sql[0], tupla_sql[2], tupla_sql[1], tupla_sql[3], tupla_sql[4], tupla_sql[5], tupla_sql[6], tupla_sql[9], tupla_sql[7], tupla_sql[8])
-				return usuario_obj
-			else:
-				return None
+				tipo = tupla_sql[9]
+				agrs = (tupla_sql[0], tupla_sql[2], tupla_sql[1], tupla_sql[3], tupla_sql[4], tupla_sql[5], tupla_sql[6], tupla_sql[9], tupla_sql[7], tupla_sql[8])
+				if tipo == "SECRETARIO":
+					usuario_obj = Secretario(*agrs)
+				elif tipo == "GESTOR":
+					usuario_obj = Gestor(*agrs)
+				elif tipo == "PROFESSOR":
+					usuario_obj = Professor(*agrs)
+				elif tipo == "ALUNO":
+					usuario_obj = Aluno(*agrs)
+			return usuario_obj
 		except Exception as e:
 			print(f"❌ Erro no banco: {e}")
 			raise ValueError("Erro ao buscar usuário por CPF no banco de dados.")

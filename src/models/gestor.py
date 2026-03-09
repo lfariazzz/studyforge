@@ -20,7 +20,7 @@ class Gestor(Usuario):
         if hasattr(self, '_escola_associada') and self._escola_associada is not None:
             raise PermissionError("Erro: A escola associada não pode ser alterada diretamente.")
 
-        if not isinstance(valor, Escola):
+        if valor is not None and not isinstance(valor, Escola):
             raise TypeError("Erro: Escola associada deve ser um objeto da classe Escola!")
         
         self._escola_associada = valor
@@ -30,7 +30,7 @@ class Gestor(Usuario):
     
     def get_permissao(self):
         """Retorna a lista de funcionalidades permitidas para o Gestor."""
-        return ["VIZUALIZAR_PERFIL", "VER_ESTATISTICA_ESCOLA", "REALIZAR_CADASTRO", "ENVIAR_MENSAGEM", 
+        return ["VISUALIZAR_PERFIL", "VER_ESTATISTICA_ESCOLA", "REALIZAR_CADASTRO", "ENVIAR_MENSAGEM", 
                 "REALIZAR_SOLICITACAO_VERBA", "ADMINISTRAR_SOLICITACOES_ESCOLA", "GERENCIAR_DADOS_ESCOLA", "ALTERAR_STATUS_USUARIO"]
     
     def exibir_perfil(self):
@@ -46,7 +46,7 @@ class Gestor(Usuario):
             f"          PERFIL DO GESTOR\n"
             f"="*40 + "\n"
             f"Nome: {self.nome}\n"
-            f"ID Identificador: {self.id}\n"
+            f"ID Identificador: {self.id_usuario}\n"
             f"Escola: {nome_escola}\n"
             f"E-mail: {self.email}\n"
             f"Status: {status_conta}\n"

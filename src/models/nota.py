@@ -4,12 +4,13 @@ vai se conecta com DemandaPedagogica
 """
 
 class Nota: 
-    def __init__(self, id_nota, id_aluno, id_turma, disciplina, valor, data, tipo):
+    def __init__(self, id_nota, id_aluno, aluno, id_turma, disciplina, valor, data, tipo):
         if not ( 0 <= valor <= 10):
             raise ValueError("Somente valores de 0 a 10 são permitidos para notas.")
         
         self._id_nota = id_nota
         self._id_aluno = id_aluno
+        self._aluno = aluno
         self._id_turma = id_turma 
         self.disciplina = disciplina
         self.valor = float(valor) 
