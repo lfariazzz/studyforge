@@ -10,6 +10,21 @@ instanciada diretamente.
 """
 class Usuario(ABC):
     def __init__(self, id_usuario, nome, cpf, email, senha, telefone, data_nascimento, tipo, login=False, status=True):
+        """
+        Inicializa um novo usuário do sistema StudyForge.
+        
+        Args:
+            id_usuario (int): Identificador único do usuário.
+            nome (str): Nome completo do usuário.
+            cpf (str): CPF do usuário (11 dígitos numéricos).
+            email (str): Endereço de email do usuário.
+            senha (str): Senha de acesso (mínimo 8 caracteres).
+            telefone (str): Número de telefone (10 ou 11 dígitos).
+            data_nascimento (str): Data de nascimento no formato DD/MM/AAAA.
+            tipo (str): Tipo de usuário (Professor, Aluno, Gestor, Secretario).
+            login (bool, optional): Indica se o usuário está logado. Defaults to False.
+            status (bool, optional): Indica se a conta está ativa. Defaults to True.
+        """
         self._id_usuario = id_usuario
         self.nome = nome
         self.cpf = cpf
@@ -148,20 +163,49 @@ class Usuario(ABC):
 
     @abstractmethod
     def get_permissao(self):
-        """Método abstrato: cada subclasse retornará 
-        sua propria lista de permissões.
+        """
+        Retorna as permissões do usuário.
+        
+        Este é um método abstrato que deve ser implementado pelas subclasses.
+        Cada tipo de usuário (Professor, Aluno, Gestor, Secretario) define
+        suas próprias permissões no sistema.
+        
+        Returns:
+            list: Lista de permissões do usuário.
         """
         pass
 
     @abstractmethod
     def exibir_perfil(self):
-        """Método abstrato: cada subclasse retornará
-        suas próprias informações de usuario
+        """
+        Exibe as informações do perfil do usuário.
+        
+        Este é um método abstrato que deve ser implementado pelas subclasses.
+        Cada tipo de usuário exibe suas informações de forma específica.
+        
+        Returns:
+            str: String contendo as informações formatadas do usuário.
         """
         pass
 
     def realizar_login(self, email_tentativa, senha_tentativa):
-        """Lógica para realizar o login do Usuário"""
+        """
+        Realiza o login do usuário no sistema.
+        
+        Verifica se a conta está ativa e valida as credenciais (email e senha).
+        Se as credenciais estiverem corretas, marca o usuário como logado.
+        
+        Args:
+            email_tentativa (str): Email fornecido na tentativa de login.
+            senha_tentativa (str): Senha fornecida na tentativa de login.
+        
+        Returns:
+            bool: True se o login foi bem-sucedido.
+        
+        Raises:
+            PermissionError: Se a conta estiver desativada.
+            ValueError: Se o email ou senha forem inválidos.
+        """
         if not self._status:
             raise PermissionError("Erro: Esta conta está desativada, por favor entrar em contato com a secretaria.")
         if senha_tentativa != self._senha or email_tentativa != self._email:
@@ -171,7 +215,14 @@ class Usuario(ABC):
         return True
 
     def encerrar_sessao(self):
-        """Lógica para deslogar do Sistema"""
+        """
+        Encerra a sessão do usuário no sistema (logout).
+        
+        Marca o usuário como deslogado.
+        
+        Returns:
+            bool: False se o usuário já estava deslogado, True se a sessão foi encerrada com sucesso.
+        """
         if not self._login:
             return False
         
@@ -179,13 +230,36 @@ class Usuario(ABC):
         return True
         
     def trocar_senha(self, verificador, nova_senha):
-        """Lógica para alterar a senha"""
+        """
+        Altera a senha do usuário.
+        
+        Valida a senha atual antes de permitir a alteração para uma nova senha.
+        A nova senha deve atender aos critérios de validação (mínimo 8 caracteres,
+        contém números ou caracteres especiais).
+        
+        Args:
+            verificador (str): Senha atual para verificação.
+            nova_senha (str): Nova senha desejada.
+        
+        Raises:
+            ValueError: Se a senha atual for inválida ou a nova senha não atender aos critérios.
+        """
         if verificador != self._senha:
             raise ValueError("Erro: Senha anterior inválid_usuarioa.")
         
         self.senha = nova_senha
 
     def to_dict(self):
+        """
+        Converte os dados do usuário em um dicionário.
+        
+        Retorna todas as informações do usuário em formato de dicionário,
+        útil para serialização (JSON) ou persistência em banco de dados.
+        
+        Returns:
+            dict: Dicionário contendo id_usuario, cpf, nome, email, senha,
+                  telefone, data_nascimento, login, status e tipo do usuário.
+        """
         return {
             "id_usuario": self._id_usuario, 
             "cpf": self._cpf,

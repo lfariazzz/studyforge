@@ -2,6 +2,20 @@ from src.models.usuario import Usuario
 
 class Gestor(Usuario):
     def __init__(self, id_usuario, nome, cpf, email, senha, telefone, data_nascimento, escola_associada):
+        """
+        Inicializa um novo gestor no sistema StudyForge.
+        
+        Args:
+            id_usuario (int): Identificador unico do gestor.
+            nome (str): Nome completo do gestor.
+            cpf (str): CPF do gestor (11 digitos numericos).
+            email (str): Endereco de email do gestor.
+            senha (str): Senha de acesso (minimo 8 caracteres).
+            telefone (str): Numero de telefone (10 ou 11 digitos).
+            data_nascimento (str): Data de nascimento no formato DD/MM/AAAA.
+            escola_associada (Escola): Objeto da escola que o gestor administra.
+                                       Nao pode ser alterado apos a inicializacao.
+        """
         super().__init__(id_usuario, nome, cpf, email, senha, telefone, data_nascimento, "GESTOR")
 
         self.escola_associada = escola_associada
@@ -29,14 +43,33 @@ class Gestor(Usuario):
     #-------
     
     def get_permissao(self):
-        """Retorna a lista de funcionalidades permitidas para o Gestor."""
+        """
+        Retorna as permissoes do gestor no sistema.
+        
+        Returns:
+            list: Lista contendo as permissoes do gestor:
+                  - VISUALIZAR_PERFIL: Acessar seu proprio perfil
+                  - VER_ESTATISTICA_ESCOLA: Consultar relatorios da escola
+                  - REALIZAR_CADASTRO: Registrar alunos e professores
+                  - ENVIAR_MENSAGEM: Publicar comunicados no mural
+                  - REALIZAR_SOLICITACAO_VERBA: Solicitar recursos para a escola
+                  - ADMINISTRAR_SOLICITACOES_ESCOLA: Gerenciar demandas enviadas
+                  - GERENCIAR_DADOS_ESCOLA: Atualizar dados estruturais
+                  - ALTERAR_STATUS_USUARIO: Ativar/desativar usuarios
+        """
         return ["VISUALIZAR_PERFIL", "VER_ESTATISTICA_ESCOLA", "REALIZAR_CADASTRO", "ENVIAR_MENSAGEM", 
                 "REALIZAR_SOLICITACAO_VERBA", "ADMINISTRAR_SOLICITACOES_ESCOLA", "GERENCIAR_DADOS_ESCOLA", "ALTERAR_STATUS_USUARIO"]
     
     def exibir_perfil(self):
         """
-        Implementação do método abstrato da classe Usuario.
-        Retorna uma string formatada com os dados principais do gestor.
+        Exibe o perfil completo do gestor.
+        
+        Implementacao do metodo abstrato da classe Usuario que retorna uma string
+        formatada com os dados principais do gestor, incluindo identificador,
+        escola associada, email e status da conta.
+        
+        Returns:
+            str: String formatada contendo informacoes do perfil do gestor.
         """
         nome_escola = self.escola_associada.nome if hasattr(self.escola_associada, 'nome') else "Não informada"
         status_conta = "Ativa" if self._status else "Inativa/Suspensa"
@@ -54,13 +87,33 @@ class Gestor(Usuario):
         )
     
     def _get_total_alunos(self):
-        """Método auxiliar para centralizar o cálculo de alunos."""
+        """
+        Calcula o total de alunos matriculados em todas as turmas da escola.
+        
+        Metodo auxiliar interno que centraliza o calculo do numero total de alunos
+        da escola associada, somando alunos de todas as turmas.
+        
+        Returns:
+            int: Total de alunos matriculados na escola.
+        """
         return sum(len(t.alunos_matriculados) for t in self.escola_associada._turmas_existentes)
 
     def ver_estatisticas(self):
         """
-        Gera um relatório estatístico completo da escola associada.
-        Consolida dados de pessoas, infraestrutura e finanças diretamente da Escola.
+        Gera um relatorio estatistico completo da escola associada.
+        
+        Consolida dados de pessoas (alunos e professores), turmas, infraestrutura
+        e financas, fornecendo uma visao geral da situacao da unidade escolar.
+        
+        Returns:
+            dict: Dicionario contendo:
+                  - escola: Nome da escola
+                  - total_alunos: Numero total de alunos matriculados
+                  - total_professores: Numero total de professores empregados
+                  - total_turmas: Numero total de turmas
+                  - media_frequencia_geral: Media de frequencia de toda a escola
+                  - capacidade_utilizada_pct: Percentual de utilizacao da capacidade
+                  - verba_disponivel: Recurso financeiro disponivel
         """
         if not self._status:
             return "Erro: Gestor inativo não tem acesso aos dados da unidade."
@@ -82,6 +135,25 @@ class Gestor(Usuario):
         }
 
     def realizar_cadastro(self, usuario, turma=None):
+        """
+        Registra um novo usuario (aluno ou professor) na unidade escolar.
+        
+        Permite que o gestor cadastre alunos em turmas especificas ou vincule
+        professores a escola e, opcionalmente, a turmas.
+        
+        Args:
+            usuario (Aluno|Professor): Objeto do usuario a ser cadastrado.
+            turma (Turma, optional): Turma para vincular. Para alunos e necessaria,
+                                     para professores e opcional. Defaults to None.
+        
+        Returns:
+            str: Mensagem de sucesso ou descricao do erro ocorrido.
+        
+        Raises (implicitamente via retorno):
+            - Capacidade da escola atingida para alunos
+            - Turma invalida ou nao informada para alunos
+            - Professor ja cadastrado na unidade
+        """
         from src.models.aluno import Aluno
         from src.models.professor import Professor
         
@@ -112,6 +184,16 @@ class Gestor(Usuario):
     def enviar_mensagem(self, titulo, conteudo):
         """
         Publica um comunicado oficial no mural da escola associada.
+        
+        Permite que o gestor compartilhe noticias, avisos e comunicados importantes
+        no mural oficial da escola, tornando acessiveis a todos os usuarios.
+        
+        Args:
+            titulo (str): Titulo do comunicado (obrigatorio).
+            conteudo (str): Conteudo da mensagem (obrigatorio).
+        
+        Returns:
+            str: Mensagem indicando sucesso ou erro da operacao.
         """
         if not self._status:
             return "Erro: Gestor inativo não pode enviar comunicados."
@@ -126,8 +208,20 @@ class Gestor(Usuario):
     
     def realizar_solicitacao(self, tipo_demanda, descricao=None, prioridade="NORMAL", **kwargs):
         """
-        Interface do Gestor com a DemandaFactory.
-        O Gestor solicita o TIPO, e a Factory lida com a complexidade da criação.
+        Interface do gestor com a DemandaFactory para criar solicitacoes.
+        
+        O gestor especifica o tipo de demanda desejada (pedagogica ou infraestrutura)
+        e a Factory lida com a complexidade da criacao da demanda apropriada.
+        
+        Args:
+            tipo_demanda (str): Tipo de demanda (ex: 'INFRAESTRUTURA', 'PEDAGOGICA').
+            descricao (str, optional): Descricao detalhada da solicitacao. Defaults to None.
+            prioridade (str, optional): Nivel de prioridade (NORMAL, ALTA, CRITICA). 
+                                        Defaults to "NORMAL".
+            **kwargs: Argumentos adicionais especificos do tipo de demanda.
+        
+        Returns:
+            str: Mensagem com status da criacao da demanda ou descricao do erro.
         """
         from src.core.demanda_factory import DemandaFactory
 
@@ -159,6 +253,13 @@ class Gestor(Usuario):
     def administrar_solicitacoes(self):
         """
         Lista e detalha o status de todas as demandas enviadas pela unidade escolar.
+        
+        Fornece um painel com resumo de todas as solicitacoes (infraestrutura e pedagogicas)
+        enviadas pela escola, permitindo monitoramento do status e acompanhamento.
+        
+        Returns:
+            str: Relatorio formatado com lista de demandas ou mensagem indicando
+                 que nenhuma solicitacao foi registrada.
         """
         if not self._status:
             return "Acesso negado: Gestor inativo."
@@ -186,6 +287,17 @@ class Gestor(Usuario):
     def gerenciar_escola(self, nova_capacidade=None):
         """
         Permite ao gestor atualizar dados estruturais da escola associada.
+        
+        Autoriza mudancas importantes na configuracao da unidade escolar, como
+        atualizacao da capacidade fisica de alunos que a escola pode receber.
+        
+        Args:
+            nova_capacidade (int, optional): Nova capacidade maxima de alunos.
+                                             Deve ser >= ao numero de alunos atuais.
+                                             Defaults to None.
+        
+        Returns:
+            str: Mensagem confirmando a alteracao ou descrevendo o erro ocorrido.
         """
         if not self._status:
             return "Erro: Gestor inativo não pode gerenciar a unidade."
@@ -206,8 +318,21 @@ class Gestor(Usuario):
     
     def alterar_status_usuario(self, usuario, novo_status: bool):
         """
-        Permite ao gestor ativar ou desativar usuários da sua unidade.
-        O Gestor só pode alterar o status de Alunos ou Professores.
+        Permite ao gestor ativar ou desativar usuarios da sua unidade escolar.
+        
+        O gestor pode alterar o status de alunos e professores vinculados a sua escola,
+        habilitando ou suspendendo suas contas de acesso ao sistema.
+        
+        Args:
+            usuario (Aluno|Professor): Objeto do usuario cuja conta sera alterada.
+            novo_status (bool): True para ativar, False para desativar a conta.
+        
+        Returns:
+            str: Mensagem confirmando a alteracao ou descrevendo o erro/falta de permissao.
+        
+        Note:
+            - Apenas alunos e professores podem ter status alterado
+            - O usuario deve estar vinculado a escola do gestor
         """
         from src.models.aluno import Aluno
         from src.models.professor import Professor
@@ -233,8 +358,14 @@ class Gestor(Usuario):
     
     def to_dict_especifico(self):
         """
-        Exporta os dados do gestor em formato de dicionário.
-        Utiliza a base da classe pai (Usuario) e adiciona o contexto da escola.
+        Exporta os dados especificos do gestor em formato de dicionario.
+        
+        Retorna um dicionario contendo os atributos especificos da classe Gestor,
+        utilizando como base os dados da classe pai (Usuario) e adicionando o contexto
+        da escola administrada.
+        
+        Returns:
+            dict: Dicionario com id_usuario e id_escola do gestor.
         """
         return {
             "id_usuario": self._id_usuario,
