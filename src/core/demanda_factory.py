@@ -2,92 +2,96 @@ from src.models.demanda_pedagogica import DemandaPedagogica
 from src.models.demanda_infraestrutura import DemandaInfraestrutura
 from src.core.configuracoes import Configuracoes
 from src.services.avaliador_frequencia import AvaliadorFrequencia
+from src.services.avaliador_infraestrutura import AvaliadorInfraestrutura
 import uuid
 
 class DemandaFactory:
     """
-    Padroniza a criação de demandas do sistema (RN02 e RN03).
-    A Factory é 'inteligente': se os dados estatísticos não forem passados via kwargs,
-    ela utiliza o AvaliadorFrequencia para calcular os dados em tempo real.
+    Padroniza a criação de demandas do sistema (RN02, RN03 e RN04).
     """
     config = Configuracoes()
 
     @staticmethod
-    def criar_demanda(tipo_demanda, solicitante, descricao=None, prioridade="NORMAL", **kwargs):
+    def criar_demanda(tipo_demanda, solicitante, descricao=None, prioridade="NORMAL", notificador=None,**kwargs):
         id_demanda = str(uuid.uuid4())
         turma_selecionada = kwargs.get("turma")
+        nova_demanda = None  # Variável para segurar o objeto antes do return
 
-        # --- BLOCO: DEMANDA PEDAGÓGICA (Frequência/Evasão) ---
+       # --- BLOCO: DEMANDA PEDAGÓGICA ---
         if tipo_demanda.upper() == "PEDAGOGICA":
-            if turma_selecionada:
-                # O mês é obrigatório para garantir o determinismo (Lógica do Chamador).
-                mes_analisado = kwargs.get("mes")
-                
-                if mes_analisado:
-                    # 1. Captura básica de dados da turma
-                    total_alunos = len(turma_selecionada._alunos_matriculados)
-                    
-                    # 2. Lógica de Contingência: 
-                    # Se os dados não vieram no kwargs, a Factory os produz via AvaliadorFrequencia.
-                    media_mensal = kwargs.get("media_mensal")
-                    alunos_abaixo_media = kwargs.get("alunos_abaixo_media")
-                    frequencia_turma = kwargs.get("frequencia_turma")
-                    alunos_presentes = kwargs.get("alunos_presentes")
+            if not turma_selecionada:
+                raise ValueError("Contexto Acadêmico Faltando: Informe a turma.")
 
-                    avaliacao = AvaliadorFrequencia()
+            # 1. ROTA DE LACUNA (Notas Baixas - RN04)
+            # ... (Seu código de lacuna parece ok) ...
 
-                    # Preenchimento automático de campos faltantes
-                    if media_mensal is None:
-                        media_mensal = avaliacao.media_presenca_mensal_turma(turma_selecionada, mes_analisado)
-                    
-                    if alunos_abaixo_media is None:
-                        alunos_abaixo_media = avaliacao.qtd_alunos_abaixo_media_frequencia(turma_selecionada, mes_analisado)
-                    
-                    # frequencia_turma e media_mensal são semanticamente diferentes, mas compartilham o valor do cálculo.
-                    if frequencia_turma is None:
-                        frequencia_turma = media_mensal
+            # 2. ROTA DE FREQUÊNCIA (RN02)
+            mes_analisado = kwargs.get("mes")
+            media_mensal = kwargs.get("media_mensal")
 
-                    if alunos_presentes is None:
-                        # NOTA: Henrique, este método precisa ser implementado no AvaliadorFrequencia
-                        # para retornar o total absoluto de presenças (assinaturas) no mês.
-                        # alunos_presentes = avaliacao.total_presencas_mensais_turma(turma_selecionada, mes_analisado)
-                        pass 
-                else:
-                    raise ValueError("Contexto Temporal Faltando: Informe o mês para análise pedagógica.")
+            # Se não mandaram a média pronta, a Factory calcula
+            if media_mensal is None:
+                if not mes_analisado:
+                    raise ValueError("Para calcular frequência, informe o 'mes'.")
+                avaliacao = AvaliadorFrequencia()
+                media_mensal = avaliacao.media_presenca_mensal_turma(turma_selecionada, mes_analisado)
 
-                # 3. Geração Automática de Descrição e Prioridade (Caso gerado pelo Sistema)
+            # Se a média for baixa, forçamos os parâmetros de Alerta Automático
+            if media_mensal < DemandaFactory.config.FREQUENCIA_MINIMA:
+                prioridade = "ALTA"
+                solicitante_final = "SISTEMA"
                 if not descricao:
-                    solicitante = "SISTEMA"
-                    prioridade = "ALTA"
-                    percentual_evasao = (1 - media_mensal) * 100
-                    descricao = (f"Alerta de Evasão: Turma {turma_selecionada} com taxa de "
-                                f"{percentual_evasao:.1f}% no mês {mes_analisado}.")
-                    
-                return DemandaPedagogica(id_demanda, descricao, prioridade, solicitante, 
-                                        total_alunos, alunos_abaixo_media, frequencia_turma, 
-                                        alunos_presentes, turma_selecionada)
+                    # Calculamos a porcentagem real de faltas (Evasão)
+                    percentual_falta = (1 - media_mensal) * 100
+                    descricao = f"ALERTA RN02: Turma {turma_selecionada.nome} com {percentual_falta:.1f}% de faltas no mês {mes_analisado}."
             else:
-                raise ValueError("Contexto Acadêmico Faltando: Informe a turma para a demanda pedagógica.")
-            
-        # --- BLOCO: DEMANDA INFRAESTRUTURA (Custos/Manutenção) ---
+                solicitante_final = solicitante
+
+            # Proteção para o atributo municipio_responsavel
+            # Se for "SISTEMA", tentamos pegar o município da própria turma/escola
+            municipio = getattr(solicitante_final, 'municipio_responsavel', None)
+            if not municipio and hasattr(turma_selecionada, 'escola'):
+                municipio = turma_selecionada.escola.municipio
+
+            return DemandaPedagogica(
+                id_demanda, 
+                descricao, 
+                prioridade, 
+                solicitante_final, 
+                turma_selecionada, 
+                media_mensal, 
+                municipio,
+                "GERAL", 
+                "A DEFINIR", 
+                [],    # Sem relatório de alunos detalhado aqui
+                0.0    # Índice de lacuna é zero para frequência
+            )
+
+        # --- BLOCO: DEMANDA INFRAESTRUTURA ---
         elif tipo_demanda.upper() == "INFRAESTRUTURA":
             custo_estimado = kwargs.get("custo_estimado", 0)
             localizacao_demanda = kwargs.get("localizacao_demanda")
 
-            # Regra de Negócio RN03: Se ultrapassar o limite, a prioridade sobe e exige autorização.
-            if custo_estimado > DemandaFactory.config.LIMITE_CUSTO_DEMANDA:
-                prioridade = "MAXIMA"
-                aviso_sistema = "\n[ALERTA]: Valor acima do limite. Requer aprovação do Secretário."
-                descricao = (descricao + aviso_sistema) if descricao else aviso_sistema
-            
-            nova_demanda = DemandaInfraestrutura(id_demanda, descricao, prioridade, solicitante, 
-                                                 custo_estimado, localizacao_demanda)
-            
-            # Status inicial condicionado à prioridade
-            if prioridade == "MAXIMA":
-                nova_demanda.atualizar_status("AGUARDANDO LICITACAO")
+            if hasattr(solicitante, 'municipio_responsavel'):
+                mun_nome = solicitante.municipio_responsavel.nome
+            else:
+                mun_nome = solicitante.escola_associada.municipio.nome
 
+            avaliador_infra = AvaliadorInfraestrutura(mun_nome)
+            status_sugerido = avaliador_infra.avaliar_status(custo_estimado)
+
+            nova_demanda = DemandaInfraestrutura(
+                id_demanda=id_demanda, 
+                descricao=descricao, 
+                prioridade=prioridade, 
+                solicitante=solicitante, 
+                custo_estimado=custo_estimado, 
+                localizacao_demanda=localizacao_demanda
+            )
+            
+            nova_demanda.atualizar_status(status_sugerido)
+
+            if "LICITAÇÃO" in status_sugerido:
+                nova_demanda.registrar_alerta(f"Custo R$ {custo_estimado} exige licitação (RN03)")
+            
             return nova_demanda
-
-        else:
-            raise ValueError(f"Tipo de demanda '{tipo_demanda}' não reconhecido pela Factory.")

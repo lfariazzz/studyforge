@@ -1,6 +1,7 @@
 from .turma import Turma
 from .aluno import Aluno
 from .gestor import Gestor
+from .escola_endereco import Endereco
 
 class Escola:
     """Representa uma unidade escolar pertencente a um município.
@@ -23,7 +24,7 @@ class Escola:
         _turmas_existentes (list[Turma]): Lista de turmas cadastradas.
         _professores_empregados (list): Lista de professores vinculados."""
     
-    def __init__(self, nome, endereco, id_escola, gestor_atual, verba_disponivel_escola, id_municipio, municipio, capacidade_infraestrutura=500):
+    def __init__(self, nome, endereco, id_escola, gestor_atual, verba_disponivel_escola, id_municipio, capacidade_infraestrutura=500):
         self._nome = nome
         self._endereco = endereco
         self._id_escola = id_escola
@@ -35,8 +36,7 @@ class Escola:
         self._turmas_existentes = []
         self._professores_empregados = []
         self._solicitacoes_enviadas = []
-        self._municipio = municipio 
-    
+            
     @property
     def nome(self):
         """Retorna o nome da escola."""
@@ -44,7 +44,7 @@ class Escola:
     
     @property
     def endereco(self):
-        """Retorna o endereço da escola."""
+        """Retorna o objeto Endereço da escola."""
         return self._endereco
     
     @property
@@ -179,12 +179,18 @@ class Escola:
         """Converte os dados da escola em dicionário."""
         return {
             "nome" : self._nome,
-            "endereco" : self._endereco,
             "id_escola" : self._id_escola,
             "gestor_atual": self._gestor_atual.nome if self._gestor_atual else None,
             "verba_disponivel_escola" : self._verba_disponivel_escola,
             "id_municipio" : self._id_municipio,
-            "capacidade_infraestrutura": self._capacidade_infraestrutura
+            "capacidade_infraestrutura": self._capacidade_infraestrutura,
+            "endereco_completo": str(self._endereco) if self._endereco else "Não informado",
+            "detalhes_endereco": {
+                "rua": self._endereco.rua,
+                "numero": self._endereco.numero,
+                "bairro": self._endereco.bairro,
+                "cep": self._endereco.cep
+            } if self._endereco else None
         }
 
     def __str__(self):

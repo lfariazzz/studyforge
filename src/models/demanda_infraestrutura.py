@@ -7,10 +7,9 @@ class DemandaInfraestrutura(Demanda):
     processo de solicitação que validam as informações, nível de importância e coleta os 
     dados dos envolvidos. 
     """
-    def __init__(self, id_demanda, descricao, prioridade, solicitante, custo_estimado, escola, municipio_responsavel, localizacao_demanda=None):
-        id_muni = municipio_responsavel.id_municipio if municipio_responsavel else None
+    def __init__(self, id_demanda, descricao, prioridade, solicitante, custo_estimado, escola, municipio_responsavel):
 
-        super().__init__(id_demanda, id_muni, descricao, prioridade, solicitante, municipio_responsavel, "INFRAESTRUTURA")
+        super().__init__(id_demanda, descricao, prioridade, solicitante, municipio_responsavel, "INFRAESTRUTURA")
         self._custo_estimado = custo_estimado
         self._escola = escola
         self.config = Configuracoes

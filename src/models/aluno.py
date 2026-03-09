@@ -7,17 +7,20 @@ Herda atributos base de Usuario e gerencia sua vida acadêmica.
 """
 
 class Aluno(Usuario):
-    def __init__(self, nome, cpf, email, senha, telefone, data_nascimento,
-                turma_associada = None):
-        super().__init__(nome, cpf, email, senha, telefone, data_nascimento)
+    def __init__(self, id_usuario, nome, cpf, email, senha, telefone, data_nascimento,
+                turma_associada = None, matricula = None):
+        super().__init__(id_usuario, nome, cpf, email, senha, telefone, data_nascimento, "ALUNO")
 
-        ano_atual = datetime.now().year
-        matricula_base = f"{self.id:06}"
-
-        self._id_matricula = f"{ano_atual}.{matricula_base[:3]}.{matricula_base[3:]}"
         self.turma_associada = turma_associada 
-        self._notas = {}
-        self._historico_frequencia = [] 
+
+        if matricula:
+            self._id_matricula = matricula
+        else:
+            ano = datetime.now().year
+            self._id_matricula = f"{ano}{self._id}"
+
+        self.notas = []
+        self.presencas = [] 
 
     # -----------------
     # GETTERS E SETTERS
@@ -134,7 +137,7 @@ class Aluno(Usuario):
         if not self._notas:
             return "Nenhuma nota foi lançada no sistema até o momento."
 
-        exibicao = [f"--- 📝 BOLETIM ESCOLAR: {self.nome} ---"]
+        exibicao = [f"--- BOLETIM ESCOLAR: {self.nome} ---"]
         
         for disciplina, lista_notas in self._notas.items():
             media = sum(lista_notas) / len(lista_notas) if lista_notas else 0
@@ -217,3 +220,4 @@ class Aluno(Usuario):
         })
 
         return dados
+    
