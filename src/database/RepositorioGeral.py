@@ -2,14 +2,14 @@ import sqlite3
 import os
 
 class RepositorioGeral:
-    def __init__(self):
-        os.makedirs("data", exist_ok=True)
-        self.connect = sqlite3.connect("data/studyforge.db")
-        self.cursor = self.connect.cursor()
-        self._criar_tabelas()
+	def __init__(self):
+		os.makedirs("data", exist_ok=True)
+		self.connect = sqlite3.connect("data/studyforge.db")
+		self.cursor = self.connect.cursor()
+		self._criar_tabelas()
 
-    def _criar_tabelas(self):
-        codigo_SQL =    ('''
+	def _criar_tabelas(self):
+		codigo_SQL = ('''
     CREATE TABLE IF NOT EXISTS usuario(
 	"id_usuario"	INTEGER PRIMARY KEY AUTOINCREMENT,
 	"cpf"	TEXT NOT NULL UNIQUE,
@@ -199,14 +199,131 @@ class RepositorioGeral:
 	FOREIGN KEY("id_professor") REFERENCES "professor"("id_usuario") ON DELETE CASCADE,
 	FOREIGN KEY("id_turma") REFERENCES "turma"("id_turma") ON DELETE RESTRICT
     );
-''')
-                            
-        self.cursor.executescript(codigo_SQL)
-        self.connect.commit()
+		''')
+		self.cursor.executescript(codigo_SQL)
+		self.connect.commit()
 
-    def salvar_municipio(self, municipio_obj):
-        dados = municipio_obj.to_dict()
-        codigo_SQL = ('''INSERT INTO municipio (nome, uf, verba_disponivel) VALUES (?,?,?)''')
-        self.cursor.execute(codigo_SQL, (dados["nome"], dados["estado"], dados["verba_disponivel_municipio"]))
-        self.connect.commit()
+	def salvar_municipio(self, municipio_obj):
+		try:
+			dados = municipio_obj.to_dict()
+			codigo_SQL = ('''INSERT INTO municipio (nome, estado, verba_disponivel_municipio, nota_de_corte) VALUES (:nome,:estado,:verba_disponivel_municipio,:nota_de_corte)''')
+			self.cursor.execute(codigo_SQL, dados)
+			municipio_obj._id_municipio = self.cursor.lastrowid
+			self.connect.commit()
+		except Exception as e:
+			self.connect.rollback()
+			print(f"❌ Erro no banco: {e}")
+			raise ValueError("Erro ao salvar município no banco de dados.")
+		
+	def salvar_usuario(self, usuario_obj):
+		try:
+			dados = usuario_obj.to_dict()
+			codigo_SQL = ('''INSERT INTO usuario (cpf, nome, email, senha, telefone, data_nascimento, tipo) VALUES (:cpf,:nome,:email,:senha,:telefone,:data_nascimento,:tipo)''')
+			self.cursor.execute(codigo_SQL, dados)
+			usuario_obj._id_usuario = self.cursor.lastrowid
+			dados_especificos = usuario_obj.to_dict_especifico()
+			dados_especificos["id_usuario"] = usuario_obj._id_usuario
+			sql_filha = None
+			if usuario_obj._tipo == "SECRETARIO":
+				sql_filha = ('''INSERT INTO secretario(id_usuario, departamento, id_municipio) VALUES (:id_usuario, :departamento, :id_municipio)''')
+			elif usuario_obj._tipo == "GESTOR":
+				sql_filha = ('''INSERT INTO gestor(id_usuario, id_escola) VALUES (:id_usuario, :id_escola)''')
+			elif usuario_obj._tipo == "PROFESSOR":
+				sql_filha = ('''INSERT INTO professor(id_usuario, salario, titulacao, area_atuacao, registro_funcional, id_escola) VALUES (:id_usuario, :salario, :titulacao, :area_atuacao, :registro_funcional, :id_escola)''')
+			elif usuario_obj._tipo == "ALUNO":
+				sql_filha = ('''INSERT INTO aluno(id_usuario, matricula, id_turma) VALUES (:id_usuario, :matricula, :id_turma)''')
+			if sql_filha:
+				self.cursor.execute(sql_filha, dados_especificos)
+			self.connect.commit()
+		except Exception as e:
+			self.connect.rollback()
+			print(f"❌ Erro no banco: {e}")
+			raise ValueError("Erro ao salvar usuário no banco de dados.")
+		
+	def salvar_escola(self, escola_obj):
+		try:
+			dados = escola_obj.to_dict()
+			codigo_SQL = ('''INSERT INTO escola(nome, verba_disponivel_escola, capacidade_infraestrutura, id_municipio, id_gestor) VALUES (:nome, :verba_disponivel_escola, :capacidade_infraestrutura, :id_municipio, :id_gestor)''')
+			self.cursor.execute(codigo_SQL, dados)
+			escola_obj._id_escola = self.cursor.lastrowid
+			if escola_obj._endereco:
+				dados_endereco = escola_obj._endereco.to_dict()
+				dados_endereco["id_escola"] = escola_obj._id_endereco
+				dados_endereco["id_localizacao"] = 1
+				sql_endereco = ('''SELECT INTO endereco(id_escola, id_localizacao, cep, rua, numero, bairro) VALUES (:id_escola, :id_localizacao, :cep, :rua, :numero, :bairro)''')
+				self.cursor.execute(sql_endereco, dados_endereco)
+				escola_obj._endereco._id_localizacao = 1
+			self.connect.commit()
+		except Exception as e:
+			self.connect.rollback()
+			print(f"❌ Erro no banco: {e}")
+			raise ValueError("Erro ao salvar escola no banco de dados.")
 
+	def salvar_turma(self, turma_obj):
+		try:
+			dados = turma_obj.to_dict()
+			codigo_SQL = ('''INSERT INTO turma(nome, ano_letivo, turno, capacidade_maxima, id_escola) VALUES (:nome, :ano_letivo, :turno, :capacidade_maxima, :id_escola)''')
+			self.cursor.execute(codigo_SQL, dados)
+			turma_obj._id_turma = self.cursor.lastrowid
+			self.connect.commit()
+		except Exception as e:
+			self.connect.rollback()
+			print(f"❌ Erro no banco: {e}")
+			raise ValueError("Erro ao salvar turma no banco de dados.")
+		
+	def salvar_nota(self, nota_obj):
+		try:
+			dados = nota_obj.to_dict()
+			codigo_SQL = ('''INSERT INTO nota(disciplina, valor, data, tipo, id_aluno, id_turma) VALUES (:disciplina, :valor, :data, :tipo, :id_aluno, :id_turma)''')
+			self.cursor.execute(codigo_SQL, dados)
+			nota_obj._id_nota = self.cursor.lastrowid
+			self.connect.commit()
+		except Exception as e:
+			self.connect.rollback()
+			print(f"❌ Erro no banco: {e}")
+			raise ValueError("Erro ao salvar nota no banco de dados.")
+		
+	def salvar_diario(self, diario_obj):
+		try:
+			dados = diario_obj.to_dict()
+			codigo_SQL = ('''INSERT INTO diario(disciplina, data, conteudo, id_professor, id_turma) VALUES (:disciplina, :data, :conteudo, :id_professor, :id_turma)''')
+			self.cursor.execute(codigo_SQL, dados)
+			diario_obj._id_diario = self.cursor.lastrowid
+			self.connect.commit()
+		except Exception as e:
+			self.connect.rollback()
+			print(f"❌ Erro no banco: {e}")
+			raise ValueError("Erro ao salvar diário no banco de dados.")
+		
+	def salvar_frequencia(self, frequencia_obj):
+		try:
+			dados = frequencia_obj.to_dict()
+			codigo_SQL = ('''INSERT INTO frequencia(status, id_aluno, id_diario) VALUES (:status, :id_aluno, :id_diario)''')
+			self.cursor.execute(codigo_SQL, dados)
+			frequencia_obj._id_frequencia = self.cursor.lastrowid
+			self.connect.commit()
+		except Exception as e:
+			self.connect.rollback()
+			print(f"❌ Erro no banco: {e}")
+			raise ValueError("Erro ao salvar frequência no banco de dados.")
+		
+	def salvar_demanda(self, demanda_obj):
+		try:
+			dados = demanda_obj.to_dict()
+			codigo_SQL = ('''INSERT INTO demanda(descricao, status, prioridade, id_solicitante, id_municipio, tipo, data_criacao, ultimo_editor, data_alteracao, alerta_auditoria) VALUES (:descricao, :status, :prioridade, :id_solicitante, :id_municipio, :tipo, :data_criacao, :ultimo_editor, :data_alteracao, :alerta_auditoria)''')
+			self.cursor.execute(codigo_SQL, dados)
+			demanda_obj._id_demanda = self.cursor.lastrowid
+			dados_especificos = demanda_obj._to_dict_especifico()
+			dados_especificos["id_demanda"] = demanda_obj._id_demanda
+			SQL_filha = None
+			if demanda_obj._tipo == "INFRAESTRUTURA":
+				SQL_filha = ('''INSERT INTO demanda_infraestrutura(id_demanda, custo_estimado, id_escola) VALUES (:id_demanda, :custo_estimado, :id_escola)''')
+			elif demanda_obj._tipo =="PEDAGOGICA":
+				SQL_filha = ('''INSERT INTO demanda_pedagogica(id_demanda, indice_lacuna, frequencia_apurada, id_turma, disciplina_alvo, id_professor, qtd_alunos_risco) VALUES (:id_demanda, :indice_lacuna, :frequencia_apurada, :id_turma, :disciplina_alvo, :id_professor, :qtd_alunos_risco)''')
+			if SQL_filha:
+				self.cursor.execute(SQL_filha, dados_especificos)
+			self.connect.commit()
+		except Exception as e:
+			self.connect.rollback()
+			print(f"❌ Erro no banco: {e}")
+			raise ValueError("Erro ao salvar demanda no banco de dados.")
