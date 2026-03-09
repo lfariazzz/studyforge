@@ -80,7 +80,7 @@ class Secretario(Usuario):
             f"          PERFIL DO SECRETÁRIO\n"
             f"="*40 + "\n"
             f"Nome: {self.nome}\n"
-            f"ID Identificador: {self.id}\n"
+            f"ID Identificador: {self.id_usuario}\n"
             f"Município: {nome_municipio}\n"
             f"Departamento: {self.departamento}\n"
             f"E-mail: {self.email}\n"

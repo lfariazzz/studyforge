@@ -17,10 +17,10 @@ class Aluno(Usuario):
             self._id_matricula = matricula
         else:
             ano = datetime.now().year
-            self._id_matricula = f"{ano}{self._id}"
+            self._id_matricula = f"{ano}{self._id_usuario}"
 
-        self.notas = []
-        self.presencas = [] 
+        self.notas = {}  # Dicionário público para notas por disciplina (para SQLite)
+        self.presencas = []  # Lista pública para histórico de frequência (para SQLite)
 
     # -----------------
     # GETTERS E SETTERS
@@ -50,7 +50,7 @@ class Aluno(Usuario):
     #implementado por Levi para integração com o src/services/avaliador_frequencia.py (RN02)    
     @property
     def presenca(self):
-        return self._historico_frequencia
+        return self.presencas
 
 
     #requer refatoração, ass:Levi 
@@ -67,7 +67,7 @@ class Aluno(Usuario):
         if total_aulas_turma == 0:
             return 100.0
 
-        presencas = sum(1 for registro in self._historico_frequencia if registro.get('presenca') is True)
+        presencas = sum(1 for registro in self.presencas if registro.get('presenca') is True)
         
         percentual = (presencas / total_aulas_turma) * 100
         return round(percentual, 2)
@@ -83,10 +83,10 @@ class Aluno(Usuario):
     
     def ver_frequencia(self):
         """Retorna o histórico detalhado de datas e presenças."""
-        if not self._historico_frequencia:
+        if not self.presencas:
             return "Nenhum registro de frequência encontrado."
         relatorio = [f"Frequência atual: {self.frequencia}%"]
-        for reg in self._historico_frequencia:
+        for reg in self.presencas:
             status = "Presente" if reg['presenca'] else "Faltou"
             relatorio.append(f"{reg['data']}: {status}")
 
@@ -134,12 +134,12 @@ class Aluno(Usuario):
         """
         Permite ao aluno visualizar suas notas organizadas por disciplina.
         """
-        if not self._notas:
+        if not self.notas:
             return "Nenhuma nota foi lançada no sistema até o momento."
 
         exibicao = [f"--- BOLETIM ESCOLAR: {self.nome} ---"]
         
-        for disciplina, lista_notas in self._notas.items():
+        for disciplina, lista_notas in self.notas.items():
             media = sum(lista_notas) / len(lista_notas) if lista_notas else 0
             notas_str = " | ".join(map(str, lista_notas))
             
@@ -155,10 +155,10 @@ class Aluno(Usuario):
         if not (0 <= valor <= 10):
             raise ValueError("Erro: A nota deve ser um valor entre 0 e 10.")
         
-        if disciplina not in self._notas:
-            self._notas[disciplina] = []
+        if disciplina not in self.notas:
+            self.notas[disciplina] = []
 
-        self._notas[disciplina].append(valor)
+        self.notas[disciplina].append(valor)
 
     def ver_noticias(self):
         """
@@ -193,7 +193,7 @@ class Aluno(Usuario):
         if not isinstance(presente, bool):
             raise TypeError("O status de presença deve ser True ou False.")
         
-        self._historico_frequencia.append({
+        self.presencas.append({
             "data": data,
             "aluno": self.nome,
             "presenca": presente
