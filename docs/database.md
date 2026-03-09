@@ -18,11 +18,8 @@ Este documento descreve a estrutura técnica do banco de dados SQLite do projeto
 | :--- | :--- | :--- | :--- |
 | **id_municipio** | INTEGER | PK, AUTOINCREMENT | Identificador único da instância municipal. |
 | **nome** | TEXT | NOT NULL | Nome oficial da cidade. |
-
-| **uf(->estado)** | TEXT | NOT NULL, CHECK(length(uf)=2) | Sigla do estado (ex: "CE"). |
-| **verba_disponivel (->verba_disponivel_municipio)**| REAL | DEFAULT 0.0 | Saldo total para demandas de infraestrutura. |
-**(media_frequencia)**
-**(lacuna_maxima_permitida)**
+| **estado** | TEXT | NOT NULL, CHECK(length(uf)=2) | Sigla do estado (ex: "CE"). |
+| **verba_disponivel_municipio**| REAL | DEFAULT 0.0 | Saldo total para demandas de infraestrutura. |
 **(nota_de_corte)**
 
 
