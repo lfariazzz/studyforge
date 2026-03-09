@@ -625,4 +625,87 @@ class RepositorioGeral:
 			print(f"❌ Erro no banco: {e}")
 			raise ValueError("Erro ao listar notas por turma no banco de dados.")
 		
+	def buscar_diario_por_id(self, id_busca):
+		try:
+			busca_tupla_sql = ('''SELECT * FROM diario JOIN professor ON diario.id_professor = professor.id_usuario JOIN usuario ON professor.id_usuario = usuario.id_usuario WHERE diario.id_diario = (:id_diario)''')
+			self.cursor.execute(busca_tupla_sql, {"id_diario": id_busca})
+			tupla_sql = self.cursor.fetchone()
+			if tupla_sql:
+				diario_obj = Diario(tupla_sql[0], tupla_sql[4], tupla_sql[14], tupla_sql[5], tupla_sql[1], tupla_sql[2], tupla_sql[3])
+				return diario_obj
+			else:
+				return None
+		except Exception as e:
+			print(f"❌ Erro no banco: {e}")
+			raise ValueError("Erro ao buscar diário no banco de dados.")
+
+	def listar_diario_por_turma(self, id_turma):
+		try:
+			lista_diarios_sql = ('''SELECT * FROM diario JOIN professor ON diario.id_professor = professor.id_usuario JOIN usuario ON professor.id_usuario = usuario.id_usuario JOIN turma ON diario.id_turma = turma.id_turma WHERE turma.id_turma = (:id_turma)''')
+			self.cursor.execute(lista_diarios_sql, {"id_turma": id_turma})
+			tuplas_diario = self.cursor.fetchall()
+			diarios_obj = []
+			for tupla in tuplas_diario:
+				diario_obj = Diario(tupla[0], tupla[4], tupla[14], tupla[5], tupla[1], tupla[2], tupla[3])
+				diarios_obj.append(diario_obj)
+			return diarios_obj
+		except Exception as e:
+			print(f"❌ Erro no banco: {e}")
+			raise ValueError("Erro ao listar diário por turma no banco de dados.")	
+	def listar_diario_por_professor(self, id_professor):
+		try:
+			lista_diarios_sql = ('''SELECT * FROM diario JOIN professor ON diario.id_professor = professor.id_usuario JOIN usuario ON professor.id_usuario = usuario.id_usuario WHERE professor.id_usuario = (:id_professor)''')
+			self.cursor.execute(lista_diarios_sql, {"id_professor": id_professor})
+			tuplas_diario = self.cursor.fetchall()
+			diarios_obj = []
+			for tupla in tuplas_diario:
+				diario_obj = Diario(tupla[0], tupla[4], tupla[14], tupla[5], tupla[1], tupla[2], tupla[3])
+				diarios_obj.append(diario_obj)
+			return diarios_obj
+		except Exception as e:
+			print(f"❌ Erro no banco: {e}")
+			raise ValueError("Erro ao listar diário por professor no banco de dados.")
+		
+	def buscar_frequencia_por_id(self, id_busca):
+		try:
+			busca_tupla_sql = ('''SELECT * FROM frequencia JOIN aluno ON frequencia.id_aluno = aluno.id_usuario JOIN usuario ON aluno.id_usuario = usuario.id_usuario JOIN diario ON frequencia.id_diario = diario.id_diario WHERE frequencia.id_frequencia = (:id_frequencia)''')
+			self.cursor.execute(busca_tupla_sql, {"id_frequencia": id_busca})
+			tupla_sql = self.cursor.fetchone()
+			if tupla_sql:
+				frequencia_obj = Frequencia(tupla_sql[0], tupla_sql[2], tupla_sql[9], tupla_sql[3], tupla_sql[1])
+				return frequencia_obj
+			else:
+				return None
+		except Exception as e:
+			print(f"❌ Erro no banco: {e}")
+			raise ValueError("Erro ao buscar frequência no banco de dados.")
 	
+	def listar_frequencia_por_aluno(self, id_aluno):
+		try:
+			lista_frequencias_sql = ('''SELECT * FROM frequencia JOIN aluno ON frequencia.id_aluno = aluno.id_usuario JOIN usuario ON aluno.id_usuario = usuario.id_usuario JOIN diario ON frequencia.id_diario = diario.id_diario WHERE aluno.id_usuario = (:id_aluno)''')
+			self.cursor.execute(lista_frequencias_sql, {"id_aluno": id_aluno})
+			tuplas_frequencia = self.cursor.fetchall()
+			frequencias_obj = []
+			for tupla in tuplas_frequencia:
+				frequencia_obj = Frequencia(tupla[0], tupla[2], tupla[9], tupla[3], tupla[1])
+				frequencias_obj.append(frequencia_obj)
+			return frequencias_obj
+		except Exception as e:
+			print(f"❌ Erro no banco: {e}")
+			raise ValueError("Erro ao listar frequência por aluno no banco de dados.")
+	
+	def listar_frequencia_por_diario(self, id_diario):
+		try:
+			lista_frequencias_sql = ('''SELECT * FROM frequencia JOIN aluno ON frequencia.id_aluno = aluno.id_usuario JOIN usuario ON aluno.id_usuario = usuario.id_usuario JOIN diario ON frequencia.id_diario = diario.id_diario WHERE diario.id_diario = (:id_diario)''')
+			self.cursor.execute(lista_frequencias_sql, {"id_diario": id_diario})
+			tuplas_frequencia = self.cursor.fetchall()
+			frequencias_obj = []
+			for tupla in tuplas_frequencia:
+				frequencia_obj = Frequencia(tupla[0], tupla[2], tupla[9], tupla[3], tupla[1])
+				frequencias_obj.append(frequencia_obj)
+			return frequencias_obj
+		except Exception as e:
+			print(f"❌ Erro no banco: {e}")
+			raise ValueError("Erro ao listar frequência por diário no banco de dados.")
+	
+	def buscar_

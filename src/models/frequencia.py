@@ -1,11 +1,12 @@
 class Frequencia: 
-    def __init__(self, id_frequencia, id_aluno, id_diario, status):
+    def __init__(self, id_frequencia, id_aluno, aluno, id_diario, status):
 
         if status.upper() not in ["PRESENTE", "AUSENTE"]:
             raise ValueError(f"O status de um aluno só pode ser presente ou ausente, foi digitado: {status}")
 
         self._id_frequencia = id_frequencia
         self._id_aluno = id_aluno 
+        self._aluno = aluno
         self._id_diario = id_diario
         self.status = status.upper()
 
