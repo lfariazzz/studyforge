@@ -13,6 +13,7 @@ class DemandaInfraestrutura(Demanda):
         self._custo_estimado = custo_estimado
         self._escola = escola
         self.config = Configuracoes
+        self.localizacao_demanda = localizacao_demanda
 
 
     def validar_usuario(self, usuario):
@@ -93,7 +94,7 @@ class DemandaInfraestrutura(Demanda):
 
 
         #Chama a função de validar o usuário
-        self.validar_usuario(usuario)
+        self.avalidar_usuario(usuario)
 
         #Salva quem solicitou a demanda e em que horas solicitou essa demanda. 
         self.atualizar(usuario)
