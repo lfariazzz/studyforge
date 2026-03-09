@@ -250,7 +250,7 @@ class RepositorioGeral:
 				dados_endereco = escola_obj._endereco.to_dict()
 				dados_endereco["id_escola"] = escola_obj._id_endereco
 				dados_endereco["id_localizacao"] = 1
-				sql_endereco = ('''SELECT INTO endereco(id_escola, id_localizacao, cep, rua, numero, bairro) VALUES (:id_escola, :id_localizacao, :cep, :rua, :numero, :bairro)''')
+				sql_endereco = ('''INSERT INTO endereco(id_escola, id_localizacao, cep, rua, numero, bairro) VALUES (:id_escola, :id_localizacao, :cep, :rua, :numero, :bairro)''')
 				self.cursor.execute(sql_endereco, dados_endereco)
 				escola_obj._endereco._id_localizacao = 1
 			self.connect.commit()
