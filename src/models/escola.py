@@ -24,13 +24,14 @@ class Escola:
         _turmas_existentes (list[Turma]): Lista de turmas cadastradas.
         _professores_empregados (list): Lista de professores vinculados."""
     
-    def __init__(self, nome, endereco, id_escola, gestor_atual, verba_disponivel_escola, id_municipio, capacidade_infraestrutura=500):
+    def __init__(self, nome, endereco, id_escola, gestor_atual, verba_disponivel_escola, id_municipio, municipio, capacidade_infraestrutura=500):
         self._nome = nome
         self._endereco = endereco
         self._id_escola = id_escola
         self._gestor_atual = gestor_atual # espera a intancia da classe Gestor
         self._verba_disponivel_escola = float(verba_disponivel_escola)
         self._id_municipio = id_municipio
+        self._municipio = municipio
         self._capacidade_infraestrutura = capacidade_infraestrutura # Define o limite físico da unidade
         self._mural_oficial = []
         self._turmas_existentes = []
