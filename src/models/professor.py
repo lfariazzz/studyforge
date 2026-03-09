@@ -135,19 +135,16 @@ class Professor(Usuario):
 
         return f"Material '{nome_material}' enviado com sucesso para a turma {turma.nome}!"
 
-    def to_dict(self):
+    def to_dict_especifico(self):
         """
         Exporta os dados do professor em formato de dicionário para persistência.
         Integra os dados da classe base Usuario com os atributos funcionais.
         """
-        dados = super().to_dict()
-
-        dados.update({
-            "registro_funcional": self.registro_funcional,
+        return{
+            "id_usuario": self.id_usuario,
+            "salario": self.salario,
             "titulacao": self.titulacao,
             "area_atuacao": self.area_atuacao,
-            "salario": self.salario,
-            "escola_nome": self.escola_associada.nome if hasattr(self.escola_associada, 'nome') else str(self.escola_associada),
-            "turmas_vinculadas": [turma.nome for turma in self._turmas_associadas]
-        })
-        return dados
+            "registro_funcional": self.registro_funcional,
+            "escola_associada": self.escola_associada.id_escola if self.escola_associada else None 
+        }

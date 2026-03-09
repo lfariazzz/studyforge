@@ -77,10 +77,11 @@ class Municipio:
     def to_dict(self):
         """Retorna os dados do município em formato dicionário."""
         return {
-            "nome": self._nome,
             "id_municipio": self._id_municipio,
+            "nome": self._nome,
             "estado": self._estado,
-            "verba_disponivel_municipio": self._verba_disponivel_municipio
+            "verba_disponivel_municipio": self._verba_disponivel_municipio,
+            "nota_de_corte": self.nota_de_corte
         }
 
     def __str__(self):

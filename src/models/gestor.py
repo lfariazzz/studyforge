@@ -231,17 +231,12 @@ class Gestor(Usuario):
         
         return f"Sucesso: O usuário {usuario.nome} foi {acao} com sucesso."
     
-    def to_dict(self):
+    def to_dict_especifico(self):
         """
         Exporta os dados do gestor em formato de dicionário.
         Utiliza a base da classe pai (Usuario) e adiciona o contexto da escola.
         """
-        dados = super().to_dict()
-
-        dados.update({
-            "escola_vinculada": self.escola_associada.nome if hasattr(self.escola_associada, 'nome') else "Não definida",
-            "id_escola": self.escola_associada.id_escola if hasattr(self.escola_associada, 'id_escola') else None,
-            "permissoes": self.get_permissao()
-        })
-
-        return dados
+        return {
+            "id_usuario": self._id_usuario,
+            "id_escola": self._escola_associada.id_escola 
+        }

@@ -129,3 +129,10 @@ class DemandaInfraestrutura(Demanda):
             raise PermissionError("Somente um Secretário de Educação pode aprovar uma demanda")
         
         self.atualizar_status("APROVADO")
+
+    def to_dict_especifico(self):
+        return{
+            "id_demanda": self._id_demanda,
+            "custo_estimado": self._custo_estimado,
+            "id_escola": self._escola.id_escola,
+        }

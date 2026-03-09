@@ -37,9 +37,10 @@ class Diario:
         """Útil para salvar o registro da aula no banco SQL"""
         return {
             "id_diario": self.__id_diario,
-            "id_turma": self.__id_turma,
             "disciplina": self.disciplina,
             "data": self.data.strftime("%Y-%m-%d"),
+            "conteudo": self.conteudo ,
             "id_professor": self.id_professor,
-            "conteudo": self.conteudo 
+            "id_turma": self.__id_turma,
+
         }

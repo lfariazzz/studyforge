@@ -100,3 +100,19 @@ class Demanda(ABC, AuditMixin):
         """Método para alteração do status privado (usado pelas filhas)"""
         self._status = novo_status
         return self._status 
+    
+    def to_dict(self):
+        """Converte os dados da demanda para um dicionário."""
+        return {
+            "id_demanda": self._id_demanda,
+            "descricao": self._descricao,
+            "status": self._status.upper(),
+            "prioridade": self._prioridade.upper(),
+            "id_solicitante": self._solicitante.id_usuario if self._solicitante else None,
+            "id_municipio": self.municipio_responsavel.id_municipio if self.municipio_responsavel else None,
+            "tipo": self._tipo.upper(),
+            "data_criacao": self._criado_em,
+            "ultimo_editor": self._alterado_por,
+            "data_alteracao": self._data_alteracao,
+            "alerta_auditoria": self._alerta_auditoria
+        }

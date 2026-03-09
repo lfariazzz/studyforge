@@ -103,3 +103,14 @@ class DemandaPedagogica(Demanda):
             self.atualizar(usuario)
             
         return True
+    
+    def to_dict_especifico(self):
+        return{
+            "id_demanda": self._id_demanda,
+            "indice_lacuna": self._indice_lacuna,
+            "frequencia_apurada": self._media_frequencia_apurada,
+            "id_turma": self._turma_alvo.id_turma if self._turma_alvo else None,
+            "disciplina_alvo": self._disciplina_alvo,
+            "id_professor": self._professor_responsavel.id_usuario if self._professor_responsavel else None,
+            "qtd_alunos_risco": self._qtd_alunos_em_risco
+        }

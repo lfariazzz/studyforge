@@ -187,14 +187,14 @@ class Usuario(ABC):
 
     def to_dict(self):
         return {
-            "tipo": self.__class__.__name__,
             "id_usuario": self._id_usuario, 
-            "nome": self._nome,
             "cpf": self._cpf,
+            "nome": self._nome,
             "email": self._email,
             "senha": self._senha,
-            "telefone": self.telefone,
-            "data_nascimento": self.data_nascimento,
-            "status": self._status,
-            "sessao": self.login
+            "telefone": self._telefone,
+            "data_nascimento": self._data_nascimento,
+            "login": int(self._login),        
+            "status": int(self._status),
+            "tipo": self.__class__.__name__.upper(),
         }

@@ -288,18 +288,13 @@ class Secretario(Usuario):
         else:
             return "Comando inválido. Escolha 'ADICIONAR' ou 'REMOVER'."
         
-    def to_dict(self):
+    def to_dict_especifico(self):
         """
         Exporta os dados do secretário em formato de dicionário.
         Utiliza a base da classe pai (Usuario) e adiciona o contexto municipal.
         """
-        dados = super().to_dict()
-        dados.update({
-            "municipio_responsavel": self.municipio_responsavel.nome if hasattr(self.municipio_responsavel, 'nome') else "Não definido",
-            "departamento": self.departamento,
-            "qtd_escolas_sob_gestao": len(self.municipio_responsavel.escolas_situadas) if hasattr(self.municipio_responsavel, 'escolas_situadas') else 0,
-            "verba_municipal_atual": self.municipio_responsavel.verba_disponivel_municipio if hasattr(self.municipio_responsavel, 'verba_disponivel_municipio') else 0,
-            "permissoes": self.get_permissao()
-        })
-
-        return dados
+        return{
+            "id_usuario": self._id_usuario,
+            "departamento": self._departamento,
+            "id_municipio": self.municipio_responsavel.id_municipio if self.municipio_responsavel else None
+        }

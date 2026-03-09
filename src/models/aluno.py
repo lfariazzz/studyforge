@@ -209,15 +209,11 @@ class Aluno(Usuario):
             
         return "Material não encontrado na sua turma"
     
-    def to_dict(self):
+    def to_dict_especifico(self):
         """Exporta os dados do aluno em formato de dicionário."""
-        dados = super().to_dict()
-        dados.update({
-            "id_matricula": self.id_matricula,
-            "turma": self.turma_associada.nome if hasattr(self.turma_associada, 'nome') else str(self.turma_associada),
-            "historico": self._historico_frequencia,
-            "notas": self._notas
-        })
-
-        return dados
+        return{
+            "id_usuario": self._id_usuario,
+            "matricula": self._id_matricula,
+            "id_turma": self._turma_associada._id_turma if self._turma_associada else None
+        }
     
