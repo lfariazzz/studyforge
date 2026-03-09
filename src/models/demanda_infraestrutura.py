@@ -15,7 +15,6 @@ class DemandaInfraestrutura(Demanda):
         self._custo_estimado = custo_estimado
         self._escola = escola
         self.config = Configuracoes
-        self.localizacao_demanda = localizacao_demanda
 
 
     def validar_usuario(self, usuario):
