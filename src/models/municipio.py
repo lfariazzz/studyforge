@@ -2,13 +2,12 @@ class Municipio:
     """Representa a gestão municipal responsável por um conjunto de escolas.
     Controla as verbas públicas e o cadastro de unidades de ensino."""
 
-    def __init__(self, nome, id_municipio, estado, verba_disponivel_municipio, media_frequencia, lacuna_maxima_permitida):
+    def __init__(self, nome, id_municipio, estado, verba_disponivel_municipio, nota_de_corte):
         self._nome = nome
         self._id_municipio = id_municipio
         self.estado = estado
         self.verba_disponivel_municipio = verba_disponivel_municipio
-        self.media_frequencia = media_frequencia
-        self.lacuna_maxima_permitida = lacuna_maxima_permitida
+        self.nota_de_corte = nota_de_corte
         
         self._escolas_situadas = []
 
@@ -78,10 +77,11 @@ class Municipio:
     def to_dict(self):
         """Retorna os dados do município em formato dicionário."""
         return {
-            "nome": self._nome,
             "id_municipio": self._id_municipio,
+            "nome": self._nome,
             "estado": self._estado,
-            "verba_disponivel_municipio": self._verba_disponivel_municipio
+            "verba_disponivel_municipio": self._verba_disponivel_municipio,
+            "nota_de_corte": self.nota_de_corte
         }
 
     def __str__(self):

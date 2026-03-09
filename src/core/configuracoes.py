@@ -8,7 +8,7 @@ class Configuracoes:
 
     Attributes:
         FREQUENCIA_MINIMA (float): Percentual mínimo de presença (RN02). Padrão: 0.75.
-        INDICE_LACUNA_MINIMO (float): Limite inferior para detecção de lacunas (RN03). Padrão: 0.3.
+        INDICE_LACUNA_MAXIMO (float): Limite inferior para detecção de lacunas (RN03). Padrão: 0.3.
         LIMITE_CUSTO_DEMANDA (float): Teto orçamentário para requisições (RN04). Padrão: 15000.0.
         _instancias (dict): Repositório privado que armazena as instâncias únicas por município.
     """
@@ -17,7 +17,7 @@ class Configuracoes:
 
     # --- Valores Padrão (Fallback) ---
     FREQUENCIA_MINIMA = 0.75
-    INDICE_LACUNA_MINIMO = 0.3
+    INDICE_LACUNA_MAXIMO = 0.3
     LIMITE_CUSTO_DEMANDA = 15000.0
 
     def __new__(cls, municipio="GLOBAL"):

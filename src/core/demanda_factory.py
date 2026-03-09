@@ -53,7 +53,7 @@ class DemandaFactory:
             if not municipio and hasattr(turma_selecionada, 'escola'):
                 municipio = turma_selecionada.escola.municipio
 
-            nova_demanda = DemandaPedagogica(
+            return DemandaPedagogica(
                 id_demanda, 
                 descricao, 
                 prioridade, 

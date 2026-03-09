@@ -199,15 +199,14 @@ class Turma:
         "Converte os dados da turma para um dicionário."
         return {
             "id_turma": self._id_turma,
-            "nome_turma": self._nome,
+            "nome": self._nome,
             "ano_letivo": self._ano_letivo,
+            "turno": self.turno.upper(),
             "capacidade_maxima": self._capacidade_maxima,
-            "total_alunos": len(self._alunos_matriculados),
-            "total_professores": len(self._professores_regentes),
             "id_escola": self._id_escola,
-            "turno": self.turno
         }
 
     def __str__(self):
         """Retorna representação textual da turma."""
         return f"Turma: {self._nome} - {self._ano_letivo} (ID: {self._id_turma})"
+    
