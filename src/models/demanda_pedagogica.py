@@ -10,40 +10,40 @@ class DemandaPedagogica(Demanda):
     """
 
     def __init__(self, id_demanda, descricao, prioridade, solicitante, 
-                 turma, frequencia_apurada, municipio_responsavel, disciplina_alvo, professor, relatorio_alunos, indice_lacuna):
+                 turma, frequencia_apurada, municipio_responsavel, disciplina_alvo, professor, relatorio_alunos, indice_lacuna,
+                 status="PENDENTE", criado_em=None, editor=None, data_alteracao=None, alerta=None):
         
-        super().__init__(id_demanda, descricao, prioridade, solicitante, municipio_responsavel, "PEDAGÓGICA")
+        super().__init__(id_demanda, descricao, prioridade, solicitante, municipio_responsavel, "PEDAGÓGICA", status, criado_em, editor, data_alteracao, alerta)
 
         # 2. Atributos da Demanda
-        self.__turma_alvo = turma
-        self.__qtd_alunos_em_risco = len(relatorio_alunos)
-        self.__professor_responsavel = professor    
-        self.__relatorio_alunos = relatorio_alunos
-        self.__disciplina_alvo = disciplina_alvo
-        self.__indice_lacuna = indice_lacuna
-        self.prioridade = prioridade
+        self._turma_alvo = turma
+        self._qtd_alunos_em_risco = len(relatorio_alunos)
+        self._professor_responsavel = professor    
+        self._relatorio_alunos = relatorio_alunos
+        self._disciplina_alvo = disciplina_alvo
+        self._indice_lacuna = indice_lacuna
 
         # --- MUDANÇA AQUI ---
         # Recebemos a frequência que o AvaliadorFrequencia calculou
-        self.__media_frequencia_apurada = frequencia_apurada
+        self._media_frequencia_apurada = frequencia_apurada
         
         # 3. Pegando o total de alunos direto do objeto turma
-        self.__total_alunos = len(turma._alunos_matriculados) if hasattr(turma, '_alunos_matriculados') else 0
+        self._total_alunos = len(turma._alunos_matriculados) if hasattr(turma, '_alunos_matriculados') else 0
 
     @property
     def indice_lacuna(self):
         """Retorna o indice lacuna calculado em AvaliadorLacuna"""
-        return self.__indice_lacuna
+        return self._indice_lacuna
 
     @property
     def frequencia_atual(self):
         """Retorna a média de frequência que o Avaliador calculou."""
-        return self.__media_frequencia_apurada
+        return self._media_frequencia_apurada
     
     @property 
     def disciplina_alvo(self):
         """Retorna a disciplina alvo"""
-        return self.__disciplina_alvo
+        return self._disciplina_alvo
 
 
     def validar_reforco(self):
@@ -72,19 +72,19 @@ class DemandaPedagogica(Demanda):
         
         if self.validar_reforco(): 
 
-            lista_formatada = "\n".join([f"  • {aluno['nome']} (Média: {aluno['media']:.1f})" for aluno in self.__relatorio_alunos])
+            lista_formatada = "\n".join([f"  • {aluno['nome']} (Média: {aluno['media']:.1f})" for aluno in self._relatorio_alunos])
 
             relatorio = (
             f"\n"
             f"--- RELATÓRIO DE MONITORAMENTO PEDAGÓGICO ---\n"
-            f"DATA: {self.registrar_data_demanda_pedagogica()}\n"
-            f"PROFESSOR(A): {self.__professor_responsavel}\n"
-            f"DISCIPLINA: {self.__disciplina_alvo}\n"
-            f"TURMA: {self.__turma_alvo.nome}\n"
+            f"DATA: {self.registrar_data_demanda()}\n"
+            f"PROFESSOR(A): {self._professor_responsavel}\n"
+            f"DISCIPLINA: {self._disciplina_alvo}\n"
+            f"TURMA: {self._turma_alvo.nome}\n"
             f"----------------------------------------------\n"
             f"STATUS: REFORÇO NECESSÁRIO\n"
-            f"FREQUÊNCIA APURADA: {self.__media_frequencia_apurada * 100:.1f}%\n"
-            f"ALUNOS EM RISCO: {self.__qtd_alunos_em_risco} de {self.__total_alunos}\n"
+            f"FREQUÊNCIA APURADA: {self._media_frequencia_apurada * 100:.1f}%\n"
+            f"ALUNOS EM RISCO: {self._qtd_alunos_em_risco} de {self._total_alunos}\n"
             f"ÍNDICE DE LACUNA: {self.indice_lacuna * 100:.1f}%\n"
             f"----------------------------------------------\n"
             f"LISTA DE ESTUDANTES:\n"
@@ -93,12 +93,12 @@ class DemandaPedagogica(Demanda):
         )
             
             #Salva o texto no objeto ao invés de dar print. 
-            self.alerta_gerado = relatorio
+            self._alerta_auditoria = relatorio
 
             self.atualizar_status("REFORÇO NECESSÁRIO")
             self.atualizar(usuario)
         else: 
-            self.alerta_gerado = "RELATÓRIO: O desempenho e a frequência da turma estão dentro da normalidade"
+            self._alerta_auditoria = "RELATÓRIO: O desempenho e a frequência da turma estão dentro da normalidade"
             self.atualizar_status("REGULAR")
             self.atualizar(usuario)
             
