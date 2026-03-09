@@ -2,7 +2,13 @@ from abc import ABC, abstractmethod
 from src.models.demanda import AuditMixin
 
 class IObservador(ABC):
-    """Interface abstrata para definir o comportamento dos observadores do sistema."""
+    """
+    Interface abstrata para definir o comportamento dos observadores do sistema.
+
+    Observadores são componentes que reagem a eventos disparados pelo NotificadorCentral,
+    como a criação ou atualização de uma demanda. Cada observador deve implementar o
+    método `atualizar`, que define a ação a ser tomada quando uma notificação ocorre.
+    """
 
     @abstractmethod
     def atualizar(self, demanda):
@@ -14,11 +20,18 @@ class IObservador(ABC):
         """
         pass
 
+
 class NotificadorCentral:
-    """Gerencia a inscrição e a notificação de observadores por categoria."""
+    """
+    Gerencia a inscrição e a notificação de observadores por categoria de demanda.
+
+    Essa classe implementa o papel de "Sujeito" no padrão Observer. Ela mantém listas
+    de observadores organizadas por categoria (ex.: 'PEDAGOGICA', 'INFRAESTRUTURA') e
+    dispara notificações para todos os inscritos quando um evento relevante ocorre.
+    """
 
     def __init__(self):
-        """Inicializa o notificador com categorias de demanda vazias."""
+        """Inicializa o notificador com categorias de demanda pré-definidas e listas vazias de observadores."""
         self._assinantes = {"PEDAGOGICA": [], "INFRAESTRUTURA": []}
 
     def assinar(self, categoria, observador):
@@ -26,8 +39,8 @@ class NotificadorCentral:
         Inscreve um observador em uma categoria específica.
 
         Args:
-            categoria (str): A categoria da demanda (ex: 'PEDAGOGICA').
-            observador (IObservador): A instância do observador a ser notificada.
+            categoria (str): A categoria da demanda (ex: 'PEDAGOGICA', 'INFRAESTRUTURA').
+            observador (IObservador): A instância do observador que será notificada.
         """
         categoria = categoria.upper()
         if categoria in self._assinantes:
@@ -35,11 +48,11 @@ class NotificadorCentral:
 
     def notificar(self, demanda, tipo_demanda):
         """
-        Dispara o método atualizar() para todos os observadores da categoria.
+        Dispara o método atualizar() para todos os observadores da categoria informada.
 
         Args:
             demanda (Demanda): O objeto de demanda a ser processado.
-            tipo_demanda (str): A categoria para filtrar a notificação.
+            tipo_demanda (str): A categoria usada para filtrar quais observadores serão notificados.
         """
         tipo_demanda = tipo_demanda.upper()
         print(f"DEBUG NOTIFICADOR: Tipo buscado '{tipo_demanda}'. Chaves disponíveis: {list(self._assinantes.keys())}")
@@ -53,15 +66,21 @@ class NotificadorCentral:
         else:
             print("DEBUG NOTIFICADOR: CHAVE NÃO ENCONTRADA!")
 
+
 class NotificadorEmail(IObservador, AuditMixin):
-    """Responsável por enviar notificações de demanda via e-mail e registrar auditoria."""
+    """
+    Observador responsável por enviar notificações de demanda via e-mail.
+
+    Além de simular o envio de e-mails, registra cada envio no histórico de auditoria
+    para garantir rastreabilidade futura.
+    """
 
     def __init__(self, papel_alvo):
         """
         Inicializa o notificador de e-mail.
 
         Args:
-            papel_alvo (str): Descrição do destinatário (ex: 'Direção Escolar').
+            papel_alvo (str): Descrição do destinatário (ex: 'Direção Escolar', 'Corpo Docente').
         """
         AuditMixin.__init__(self)
         self.papel_alvo = papel_alvo
@@ -72,7 +91,7 @@ class NotificadorEmail(IObservador, AuditMixin):
         Envia o e-mail e registra o marco no histórico de auditoria.
 
         Args:
-            demanda (Demanda): A demanda processada.
+            demanda (Demanda): A demanda processada que disparou a notificação.
         """
         print(f"[E-MAIL] Enviado para {self.papel_alvo} sobre a demanda: {demanda.descricao}")
         
@@ -82,11 +101,17 @@ class NotificadorEmail(IObservador, AuditMixin):
         self.registrar_marco(nome_autor, f"E-mail enviado para {self.papel_alvo}")
         self.historico_auditoria.append(demanda) 
 
+
 class NotificadorSistema(IObservador, AuditMixin):
-    """Responsável por gerar alertas internos do sistema e registrar auditoria."""
+    """
+    Observador responsável por gerar alertas internos do sistema.
+
+    Esse observador simula notificações internas (ex.: alertas em painel de gestão)
+    e registra cada alerta no histórico de auditoria.
+    """
 
     def __init__(self):
-        """Inicializa o notificador de sistema."""
+        """Inicializa o notificador de sistema com histórico de auditoria vazio."""
         AuditMixin.__init__(self)
         self.historico_auditoria = []
 

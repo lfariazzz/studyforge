@@ -26,6 +26,18 @@ class AuditMixin:
         sem precisar mudar o nome do 'usuario_que_alterou'.
         """
         self._alerta_auditoria = mensagem
+    
+    def registrar_marco(self, autor, mensagem):
+        """
+        Registra um marco no histórico de auditoria.
+        """
+        registro = {
+            "autor": autor,
+            "mensagem": mensagem,
+            "data": datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        }
+        self.historico_marcos.append(registro)
+        return registro
 
     def registrar_data_demanda(self):
         momento_exato = datetime.now()
