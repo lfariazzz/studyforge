@@ -5,6 +5,12 @@ from src.models.professor import Professor
 from src.models.secretario import Secretario
 from src.models.gestor import Gestor
 from src.models.aluno import Aluno
+from src.models.escola import Escola
+from src.models.turma import Turma
+from src.models.nota import Nota
+from src.models.diario import Diario
+from src.models.frequencia import Frequencia
+from src.models.demanda import Demanda
 
 
 class RepositorioGeral:
@@ -339,6 +345,20 @@ class RepositorioGeral:
 			raise ValueError("Erro ao salvar demanda no banco de dados.")
 		
 	""""Métodos responsáveis por ler os dados do sistema no banco de dados SQLite e transformar em objetos novamente."""
+	def buscar_usuario_por_cpf(self, cpf_busca):
+		try:
+			busca_tupla_sql = ('''SELECT * FROM usuario WHERE cpf = (:cpf)''')
+			self.cursor.execute(busca_tupla_sql, {"cpf": cpf_busca})
+			tupla_sql = self.cursor.fetchone()
+			if tupla_sql:
+				usuario_obj = Usuario(tupla_sql[0], tupla_sql[2], tupla_sql[1], tupla_sql[3], tupla_sql[4], tupla_sql[5], tupla_sql[6], tupla_sql[9], tupla_sql[7], tupla_sql[8])
+				return usuario_obj
+			else:
+				return None
+		except Exception as e:
+			print(f"❌ Erro no banco: {e}")
+			raise ValueError("Erro ao buscar usuário por CPF no banco de dados.")
+		
 	def buscar_municipio_por_id(self, id_busca):
 		try:
 			busca_tupla_sql = ('''SELECT * FROM municipio WHERE id_municipio = (:id_municipio)''')
@@ -478,3 +498,131 @@ class RepositorioGeral:
 		except Exception as e:
 			print(f"❌ Erro no banco: {e}")
 			raise ValueError("Erro ao listar alunos no banco de dados.")
+		
+	def buscar_escola_por_id(self, id_busca):
+		try:
+			busca_tupla_sql = ('''SELECT * FROM escola JOIN municipio ON escola.id_municipio = municipio.id_municipio WHERE escola.id_escola = (:id_escola)''')
+			self.cursor.execute(busca_tupla_sql, {"id_escola": id_busca})
+			tupla_sql = self.cursor.fetchone()
+			if tupla_sql:
+				escola_obj = Escola(tupla_sql[1], tupla_sql[6], tupla_sql[0], tupla_sql[5], tupla_sql[2], tupla_sql[4], tupla_sql[8], tupla_sql[3])
+				return escola_obj
+			else:
+				return None
+		except Exception as e:
+			print(f"❌ Erro no banco: {e}")
+			raise ValueError("Erro ao buscar escola no banco de dados.")
+	
+	def listar_escolas(self):
+		try:
+			lista_escolas_sql = ('''SELECT * FROM escola JOIN municipio ON escola.id_municipio = municipio.id_municipio''')
+			self.cursor.execute(lista_escolas_sql)
+			tuplas_escola = self.cursor.fetchall()
+			objetos_escola = []
+			for tupla in tuplas_escola:
+				escola_obj = Escola(tupla[1], tupla[6], tupla[0], tupla[5], tupla[2], tupla[4], tupla[8], tupla[3])
+				objetos_escola.append(escola_obj)
+			return objetos_escola
+		except Exception as e:
+			print(f"❌ Erro no banco: {e}")
+			raise ValueError("Erro ao listar escolas no banco de dados.")
+		
+	def listar_escolas_por_municipio(self, municipio_buscado):
+		try:
+			lista_escolas_sql = ('''SELECT * FROM escola JOIN municipio ON escola.id_municipio = municipio.id_municipio WHERE municipio.nome = (:municipio)''')
+			self.cursor.execute(lista_escolas_sql, {"municipio" : municipio_buscado})
+			tuplas_escola = self.cursor.fetchall()
+			escolas_obj = []
+			for tupla in tuplas_escola:
+				escola_obj = Escola(tupla[1], tupla[6], tupla[0], tupla[5], tupla[2], tupla[4], tupla[8], tupla[3])
+				escolas_obj.append(escola_obj)
+			return escolas_obj
+		except Exception as e:
+			print(f"❌ Erro no banco: {e}")
+			raise ValueError("Erro ao listar escolas por município no banco de dados.")
+		
+	def buscar_turma_por_id(self, id_busca):
+		try:
+			busca_tupla_sql = ('''SELECT * FROM turma JOIN escola ON turma.id_escola = escola.id_escola WHERE turma.id_turma = (:id_turma)''')
+			self.cursor.execute(busca_tupla_sql, {"id_turma": id_busca})
+			tupla_sql = self.cursor.fetchone()
+			if tupla_sql:
+				turma_obj = Turma(tupla_sql[0], tupla_sql[1], tupla_sql[2], tupla_sql[5], tupla_sql[7], tupla_sql[3], tupla_sql[4])
+				return turma_obj
+			else:
+				return None
+		except Exception as e:
+			print(f"❌ Erro no banco: {e}")
+			raise ValueError("Erro ao buscar turma no banco de dados.")
+		
+	def listar_turmas(self):
+		try:
+			lista_turmas_sql = ('''SELECT * FROM turma JOIN escola ON turma.id_escola = escola.id_escola''')
+			self.cursor.execute(lista_turmas_sql)
+			tuplas_turma = self.cursor.fetchall()
+			objetos_turma = []
+			for tupla in tuplas_turma:
+				turma_obj = Turma(tupla[0], tupla[1], tupla[2], tupla[5], tupla[7], tupla[3], tupla[4])
+				objetos_turma.append(turma_obj)
+			return objetos_turma
+		except Exception as e:
+			print(f"❌ Erro no banco: {e}")
+			raise ValueError("Erro ao listar turmas no banco de dados.")
+	
+	def listar_turmas_por_escola(self, escola_buscada):
+		try:
+			lista_turmas_sql = ('''SELECT * FROM turma JOIN escola ON turma.id_escola = escola.id_escola WHERE escola.nome = (:escola)''')
+			self.cursor.execute(lista_turmas_sql, {"escola" : escola_buscada})
+			tuplas_turma = self.cursor.fetchall()
+			turmas_obj = []
+			for tupla in tuplas_turma:
+				turma_obj = Turma(tupla[0], tupla[1], tupla[2], tupla[5], tupla[7], tupla[3], tupla[4])
+				turmas_obj.append(turma_obj)
+			return turmas_obj
+		except Exception as e:
+			print(f"❌ Erro no banco: {e}")
+			raise ValueError("Erro ao listar turmas por escola no banco de dados.")
+		
+	def buscar_nota_por_id(self, id_busca):
+		try:
+			busca_tupla_sql = ('''SELECT * FROM nota JOIN aluno ON nota.id_aluno = aluno.id_usuario JOIN usuario ON nota.id_aluno = usuario.id_usuario WHERE nota.id_nota = (:id_nota)''')
+			self.cursor.execute(busca_tupla_sql, {"id_nota": id_busca})
+			tupla_sql = self.cursor.fetchone()
+			if tupla_sql:
+				nota_obj = Nota(tupla_sql[0], tupla_sql[5], tupla_sql[12], tupla_sql[6], tupla_sql[1], tupla_sql[2], tupla_sql[3], tupla_sql[4])
+				return nota_obj
+			else:
+				return None
+		except Exception as e:
+			print(f"❌ Erro no banco: {e}")
+			raise ValueError("Erro ao buscar nota no banco de dados.")
+		
+	def listar_notas_por_aluno(self, id_aluno):
+		try:
+			lista_notas_sql = ('''SELECT * FROM nota JOIN aluno ON nota.id_aluno = aluno.id_usuario JOIN usuario ON nota.id_aluno = usuario.id_usuario WHERE aluno.id_usuario = (:id_aluno)''')
+			self.cursor.execute(lista_notas_sql, {"id_aluno": id_aluno})
+			tuplas_nota = self.cursor.fetchall()
+			notas_obj = []
+			for tupla in tuplas_nota:
+				nota_obj = Nota(tupla[0], tupla[5], tupla[12], tupla[6], tupla[1], tupla[2], tupla[3], tupla[4])
+				notas_obj.append(nota_obj)
+			return notas_obj
+		except Exception as e:
+			print(f"❌ Erro no banco: {e}")
+			raise ValueError("Erro ao listar notas por aluno no banco de dados.")
+	
+	def listar_notas_por_turma(self, id_turma):
+		try:
+			lista_notas_sql = ('''SELECT * FROM nota JOIN aluno ON nota.id_aluno = aluno.id_usuario JOIN usuario ON nota.id_aluno = usuario.id_usuario JOIN turma ON nota.id_turma = turma.id_turma WHERE  turma.id_turma = (:id_turma)''')
+			self.cursor.execute(lista_notas_sql, {"id_turma": id_turma})
+			tuplas_nota = self.cursor.fetchall()
+			notas_obj = []
+			for tupla in tuplas_nota:
+				nota_obj = Nota(tupla[0], tupla[5], tupla[12], tupla[6], tupla[1], tupla[2], tupla[3], tupla[4])
+				notas_obj.append(nota_obj)
+			return notas_obj
+		except Exception as e:
+			print(f"❌ Erro no banco: {e}")
+			raise ValueError("Erro ao listar notas por turma no banco de dados.")
+		
+	
