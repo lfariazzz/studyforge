@@ -1,14 +1,15 @@
 """
-Para executar este teste, use o comando:
-    python -m unittest tests.teste_usuario.TestUsuario -v
+Testes para a classe Usuario usando unittest.
+Para executar: python -m unittest tests.teste_usuario -v
 """
 import sys
 import os
-import re
+import unittest
 from datetime import datetime
 
 # Ajuste de path para encontrar o modelo
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from src.models.usuario import Usuario
 
 class UsuarioTeste(Usuario):
@@ -18,115 +19,118 @@ class UsuarioTeste(Usuario):
     def exibir_perfil(self):
         return f"Teste: {self.nome}"
 
-def testar_tudo():
-    print("="*50)
-    print("INICIANDO BATERIA DE TESTES EXAUSTIVOS")
-    print("="*50)
+class TestUsuario(unittest.TestCase):
+    def setUp(self):
+        """Configura um usuário de teste antes de cada teste."""
+        self.u = UsuarioTeste(
+            id_usuario=1,
+            nome="Fulano Detal",
+            cpf="123.456.789-01",
+            email="Teste@Email.com",
+            senha="Senha_Especial_123",
+            telefone="11988887777",
+            data_nascimento="01/01/2000",
+            tipo="TESTE"
+        )
 
-    # --- 1. TESTE DE INSTANCIAÇÃO E GETTERS BÁSICOS ---
-    u = UsuarioTeste(
-        nome="Fulano Detal", 
-        cpf="123.456.789-01", 
-        email="Teste@Email.com", 
-        senha="Senha_Especial_123", 
-        telefone="11988887777", 
-        data_nascimento="01/01/2000"
-    )
-    
-    print("\n[GETTERS - ESTADO INICIAL]")
-    print(f"ID: {u.id} | Esperado: 1")
-    print(f"Nome: {u.nome} | Esperado: Fulano Detal (Title Case)")
-    print(f"CPF: {u.cpf} | Esperado: 12345678901 (Apenas números)")
-    print(f"Email: {u.email} | Esperado: teste@email.com (Lower case)")
-    print(f"Telefone: {u.telefone} | Esperado: (11) 98888-7777")
-    print(f"Data: {u.data_nascimento} | Esperado: 01/01/2000")
-    print(f"Status: {u.status} | Esperado: Ativo")
-    print(f"Login: {u.login} | Esperado: Offline")
+    def test_instantiation_and_getters(self):
+        """Testa instanciação e getters básicos."""
+        self.assertEqual(self.u.id_usuario, 1)
+        self.assertEqual(self.u.nome, "Fulano Detal")
+        self.assertEqual(self.u.cpf, "12345678901")
+        self.assertEqual(self.u.email, "teste@email.com")
+        self.assertEqual(self.u.telefone, "(11) 98888-7777")
+        self.assertEqual(self.u.data_nascimento, "01/01/2000")
+        self.assertEqual(self.u.status, "Ativo")
+        self.assertEqual(self.u.login, "Offline")
 
-    # --- 2. TESTE DE SETTERS (VALIDAÇÕES DE ERRO) ---
-    print("\n[SETTERS - TESTANDO RESTRIÇÕES]")
-    
-    # Nome Inválido (Números)
-    try:
-        u.nome = "Fulano 123"
-    except ValueError as e:
-        print(f"OK - Barrou nome com número: {e}")
+    def test_setters_invalid(self):
+        """Testa validações de erro nos setters."""
+        # Nome com números
+        with self.assertRaises(ValueError):
+            self.u.nome = "Fulano 123"
 
-    # CPF Inválido (Tamanho)
-    try:
-        u.cpf = "12345"
-    except ValueError as e:
-        print(f"OK - Barrou CPF curto: {e}")
+        # CPF curto
+        with self.assertRaises(ValueError):
+            self.u.cpf = "12345"
 
-    # Email Inválido (Regex)
-    try:
-        u.email = "email_errado.com"
-    except ValueError as e:
-        print(f"OK - Barrou email sem @: {e}")
+        # Email inválido
+        with self.assertRaises(ValueError):
+            self.u.email = "email_errado.com"
 
-    # Senha Inválida (Apenas letras)
-    try:
-        u.senha = "senhatodaabc"
-    except ValueError as e:
-        print(f"OK - Barrou senha sem números/especiais: {e}")
+        # Senha apenas letras
+        with self.assertRaises(ValueError):
+            self.u.senha = "senhatodaabc"
 
-    # Telefone Inválido (Letras)
-    try:
-        u.telefone = "11-9999-AAAA"
-    except ValueError:
-        print("OK - Barrou telefone com letras (via re.sub)")
+        # Telefone com letras (deve falhar na limpeza)
+        with self.assertRaises(ValueError):
+            self.u.telefone = "11-9999-AAAA"
 
-    # Data Inválida (Futuro)
-    try:
-        u.data_nascimento = "01/01/2099"
-    except ValueError as e:
-        print(f"OK - Barrou data no futuro: {e}")
+        # Data no futuro
+        with self.assertRaises(ValueError):
+            self.u.data_nascimento = "01/01/2099"
 
-    # --- 3. TESTE DE MÉTODOS DE NEGÓCIO ---
-    print("\n[MÉTODOS - COMPORTAMENTO]")
+    def test_setters_valid(self):
+        """Testa setters com valores válidos."""
+        self.u.nome = "Novo Nome"
+        self.assertEqual(self.u.nome, "Novo Nome")
 
-    # Login com dados errados
-    try:
-        u.realizar_login("teste@email.com", "senha_errada")
-    except ValueError as e:
-        print(f"OK - Login negado (senha incorreta): {e}")
+        self.u.email = "novo@email.com"
+        self.assertEqual(self.u.email, "novo@email.com")
 
-    # Login correto
-    if u.realizar_login("teste@email.com", "Senha_Especial_123"):
-        print(f"OK - Login realizado. Status atual: {u.login}")
+        self.u.senha = "NovaSenha123!"
+        self.assertEqual(self.u.senha, "NovaSenha123!")
 
-    # Trocar senha
-    try:
-        u.trocar_senha("senha_errada", "NovaSenha123!")
-    except ValueError as e:
-        print(f"OK - Troca de senha negada (verificador errado): {e}")
+        self.u.telefone = "11987654321"
+        self.assertEqual(self.u.telefone, "(11) 98765-4321")
 
-    u.trocar_senha("Senha_Especial_123", "NovaSenha123!")
-    print(f"OK - Senha alterada com sucesso. Nova senha no dict: {u.to_dict()['senha']}")
+        self.u.data_nascimento = "02/02/1990"
+        self.assertEqual(self.u.data_nascimento, "02/02/1990")
 
-    # Encerrar Sessão
-    u.encerrar_sessao()
-    print(f"OK - Sessão encerrada. Status atual: {u.login}")
+    def test_login_methods(self):
+        """Testa métodos de login e sessão."""
+        # Login com credenciais erradas
+        with self.assertRaises(ValueError):
+            self.u.realizar_login("teste@email.com", "senha_errada")
 
-    # Teste de Conta Desativada
-    u._status = False # Simulando suspensão administrativa
-    try:
-        u.realizar_login("teste@email.com", "NovaSenha123!")
-    except PermissionError as e:
-        print(f"OK - Bloqueou login de conta inativa: {e}")
+        # Login correto
+        result = self.u.realizar_login("teste@email.com", "Senha_Especial_123")
+        self.assertTrue(result)
+        self.assertEqual(self.u.login, "Online")
 
-    # --- 4. TESTE DE EXPORTAÇÃO (TO_DICT) ---
-    print("\n[TO_DICT - VALIDAÇÃO FINAL]")
-    dados = u.to_dict()
-    # Verificando se todas as chaves esperadas existem
-    chaves_esperadas = ["tipo", "id", "nome", "cpf", "email", "senha", "telefone", "data_nascimento", "status", "sessao"]
-    todas_chaves = all(chave in dados for chave in chaves_esperadas)
-    print(f"OK - Todas as chaves presentes no dict: {todas_chaves}")
-    print(f"Dicionário final: {dados}")
+        # Encerrar sessão
+        result = self.u.encerrar_sessao()
+        self.assertTrue(result)
+        self.assertEqual(self.u.login, "Offline")
 
-    print("\n" + "="*50)
-    print("BATERIA DE TESTES CONCLUÍDA")
-    print("="*50)
+        # Encerrar sessão já encerrada
+        result = self.u.encerrar_sessao()
+        self.assertFalse(result)
+
+    def test_trocar_senha(self):
+        """Testa troca de senha."""
+        # Verificador errado
+        with self.assertRaises(ValueError):
+            self.u.trocar_senha("senha_errada", "NovaSenha123!")
+
+        # Troca correta
+        self.u.trocar_senha("Senha_Especial_123", "NovaSenha123!")
+        self.assertEqual(self.u.senha, "NovaSenha123!")
+
+    def test_conta_desativada(self):
+        """Testa login com conta desativada."""
+        self.u._status = False
+        with self.assertRaises(PermissionError):
+            self.u.realizar_login("teste@email.com", "Senha_Especial_123")
+
+    def test_to_dict(self):
+        """Testa exportação para dicionário."""
+        dados = self.u.to_dict()
+        chaves_esperadas = ["id_usuario", "nome", "cpf", "email", "senha", "telefone", "data_nascimento", "login", "status", "tipo"]
+        for chave in chaves_esperadas:
+            self.assertIn(chave, dados)
+        self.assertEqual(dados["id_usuario"], 1)
+        self.assertEqual(dados["tipo"], "USUARIOTESTE")  # Nome da classe
 
 if __name__ == "__main__":
-    testar_tudo()
+    unittest.main()

@@ -35,6 +35,7 @@ class TestAluno(unittest.TestCase):
         """Inicializa um aluno e uma turma mock para cada teste."""
         self.turma_mock = MockTurma()
         self.aluno = Aluno(
+            id_usuario=1,
             nome="João Silva",
             cpf="123.456.789-00",
             email="joao@estudante.com",
@@ -45,10 +46,11 @@ class TestAluno(unittest.TestCase):
         )
 
     def test_geracao_matricula(self):
-        """Testa se a matrícula segue o padrão ANO.000.000."""
+        """Testa se a matrícula segue o padrão AAAA + ID_USUARIO."""
         ano_atual = str(date.today().year)
         self.assertTrue(self.aluno.id_matricula.startswith(ano_atual))
-        self.assertEqual(len(self.aluno.id_matricula), 12)
+        # Formato: ANO (4 dígitos) + ID_USUARIO (1 ou mais dígitos)
+        self.assertGreaterEqual(len(self.aluno.id_matricula), 5)
 
     def test_adicionar_e_visualizar_notas(self):
         """Testa o fluxo de notas e cálculo de média no boletim."""
@@ -107,8 +109,9 @@ class TestAluno(unittest.TestCase):
         """Verifica se a exportação para dicionário está completa."""
         dados = self.aluno.to_dict()
         self.assertEqual(dados["nome"], "João Silva")
-        self.assertIn("id_matricula", dados)
-        self.assertIn("notas", dados)
+        self.assertEqual(dados["cpf"], "12345678900")
+        self.assertEqual(dados["tipo"], "ALUNO")
+        self.assertIn("id_usuario", dados)
 
 if __name__ == '__main__':
     unittest.main()
