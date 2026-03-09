@@ -78,7 +78,7 @@ class DemandaFactory:
                 mun_nome = solicitante.escola_associada.municipio.nome
 
             avaliador_infra = AvaliadorInfraestrutura(mun_nome)
-            status_sugerido = avaliador_infra.avaliar_status(custo_estimado)
+            status_sugerido = avaliador_infra.avaliar_custo(custo_estimado)
 
             nova_demanda = DemandaInfraestrutura(
                 id_demanda=id_demanda, 
@@ -86,12 +86,25 @@ class DemandaFactory:
                 prioridade=prioridade, 
                 solicitante=solicitante, 
                 custo_estimado=custo_estimado, 
-                localizacao_demanda=localizacao_demanda
+                localizacao_demanda=localizacao_demanda,
+                escola=solicitante.escola_associada,
+                municipio_responsavel=solicitante.escola_associada.municipi
             )
             
             nova_demanda.atualizar_status(status_sugerido)
 
             if "LICITAÇÃO" in status_sugerido:
                 nova_demanda.registrar_alerta(f"Custo R$ {custo_estimado} exige licitação (RN03)")
+
+         # ---GATILHO DO OBSERVER---
+        if nova_demanda and notificador:
+            notificador.notificar(nova_demanda, tipo_demanda.upper())
+
+        else:
+            raise ValueError(f"Tipo de demanda '{tipo_demanda}' não reconhecido pela Factory.")
+        # --- FINALMENTE O RETURN ---
+        if nova_demanda is None:
+            raise ValueError(f"Tipo de demanda '{tipo_demanda}' não reconhecido.") 
+           
+        return nova_demanda   
             
-            return nova_demanda
