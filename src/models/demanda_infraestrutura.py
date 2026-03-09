@@ -7,14 +7,14 @@ class DemandaInfraestrutura(Demanda):
     processo de solicitação que validam as informações, nível de importância e coleta os 
     dados dos envolvidos. 
     """
-    def __init__(self, id_demanda, descricao, prioridade, solicitante, custo_estimado, escola, municipio_responsavel):
-
+    def __init__(self, id_demanda, descricao, prioridade, solicitante, custo_estimado, escola, municipio_responsavel, localizacao_demanda=None):
         id_muni = municipio_responsavel.id_municipio if municipio_responsavel else None
 
-        super().__init__(id_demanda, id_muni, descricao, prioridade, solicitante, municipio_responsavel)
+        super().__init__(id_demanda, id_muni, descricao, prioridade, solicitante, municipio_responsavel, "INFRAESTRUTURA")
         self._custo_estimado = custo_estimado
         self._escola = escola
         self.config = Configuracoes
+        self.localizacao_demanda = localizacao_demanda
 
 
     def validar_usuario(self, usuario):
@@ -95,7 +95,7 @@ class DemandaInfraestrutura(Demanda):
 
 
         #Chama a função de validar o usuário
-        self.validar_usuario(usuario)
+        self.avalidar_usuario(usuario)
 
         #Salva quem solicitou a demanda e em que horas solicitou essa demanda. 
         self.atualizar(usuario)
