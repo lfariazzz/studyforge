@@ -31,10 +31,12 @@ class Aluno(Usuario):
         self._turma_associada = turma_associada 
 
         if matricula:
-            self._id_matricula = matricula
+            self._matricula = matricula
         else:
+            from datetime import datetime
             ano = datetime.now().year
-            self._id_matricula = f"{ano}{self._id_usuario}"
+            id_temp = id_usuario if id_usuario else "NEW"
+            self._matricula = f"{ano}{id_temp}"
 
         self.notas = [] 
         self._presencas = []  
@@ -46,7 +48,7 @@ class Aluno(Usuario):
     @property
     def id_matricula(self):
         """Retorna a matrícula única do aluno."""
-        return self._id_matricula
+        return self._matricula
     
     @property
     def turma_associada(self):
@@ -167,7 +169,7 @@ class Aluno(Usuario):
         
         return (
             f"Nome: {self.nome}\n"
-            f"Matrícula: {getattr(self, '_id_matricula', 'N/A')}\n"
+            f"Matrícula: {getattr(self, '_matricula', 'N/A')}\n"
             f"Turma: {nome_turma}\n"
             f"E-mail: {self.email}\n"
             f"Status: {status_conta}\n"
@@ -311,7 +313,8 @@ class Aluno(Usuario):
         
         return {
             "id_usuario": self.id_usuario,
-            "id_matricula": self.id_matricula,
-            "id_turma": id_turma
+            "id_turma": id_turma,
+            "matricula": self.id_matricula,
+            
         }
     

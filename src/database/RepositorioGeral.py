@@ -379,11 +379,13 @@ class RepositorioGeral:
 			self.connect.row_factory = sqlite3.Row
 			cursor = self.connect.cursor()
 			id_limpo = self._limpar_id(id_busca)
-			cursor.execute("SELECT * FROM turma WHERE id_turma = ?", (id_limpo))
+			if id_limpo is None:
+				return None
+			cursor.execute("SELECT * FROM turma WHERE id_turma = ?", (id_limpo,))
 			row = cursor.fetchone()
 			if not row:
 				return None
-			escola_obj = self.buscar_escola_por_id(row["id_escola"])
+			escola_obj = self.buscar_escola_por_id(row["id_escola"], incluir_turmas=False)
 			from src.models.turma import Turma
 			return Turma(
 				id_turma=row["id_turma"],
@@ -695,21 +697,37 @@ class RepositorioGeral:
 		except Exception as e:
 			print(f"❌ Erro no banco: {e}")
 			raise ValueError("Erro ao listar alunos no banco de dados.")
+		
+	def buscar_alunos_por_turma(self, id_turma):
+			try:
+				self.connect.row_factory = sqlite3.Row
+				cursor = self.connect.cursor()
+				cursor.execute("SELECT id_usuario FROM aluno WHERE id_turma = ?", (id_turma,))
+				rows = cursor.fetchall()
+				alunos = []
+				for r in rows:
+					aluno_obj = self.buscar_aluno_por_id(r["id_usuario"])
+					if aluno_obj:
+						alunos.append(aluno_obj)
+				return alunos
+			except Exception as e:
+				print(f"❌ Erro ao buscar alunos da turma {id_turma}: {e}")
+				return []
+			finally:
+				self.connect.row_factory = None
 
-	def buscar_escola_por_id(self, id_busca):
+	def buscar_escola_por_id(self, id_busca, incluir_gestor=True, incluir_turmas=True):
 			try:
 				self.connect.row_factory = sqlite3.Row
 				cursor = self.connect.cursor()
 				id_limpo = self._limpar_id(id_busca)
-			
-				sql = "SELECT * FROM escola WHERE id_escola = ?"
-				cursor.execute(sql, (id_limpo,))
+				cursor.execute("SELECT * FROM escola WHERE id_escola = ?", (id_limpo,))
 				row = cursor.fetchone()
 				if not row:
 					return None
 				municipio_obj = self.buscar_municipio_por_id(row["id_municipio"])
 				gestor_obj = None
-				if row["id_gestor"]:
+				if incluir_gestor and row["id_gestor"]:
 					gestor_obj = self.buscar_gestor_por_id(row["id_gestor"])
 				from src.models.escola import Escola
 				escola_obj = Escola(
@@ -722,12 +740,18 @@ class RepositorioGeral:
 					capacidade_infraestrutura=row["capacidade_infraestrutura"],
 					municipio=municipio_obj
 				)
+				if incluir_turmas and escola_obj:
+					turmas_da_escola = self.listar_turmas_por_escola(escola_obj.nome)
+					for t in turmas_da_escola:
+						t.alunos_inscritos = self.buscar_alunos_por_turma(t.id_turma)
+						escola_obj.adicionar_turma(t)
 				return escola_obj
+				
 			except Exception as e:
-				print(f"❌ Erro ao buscar escola por ID {id_busca}: {e}")
+				print(f"❌ Erro na busca em cascata da escola: {e}")
 				return None
 			finally:
-				self.connect.row_factory = None		
+				self.connect.row_factory = None
 	
 	def buscar_escolas_por_municipio(self, municipio):
 		try:
@@ -778,19 +802,35 @@ class RepositorioGeral:
 			raise ValueError("Erro ao listar turmas no banco de dados.")
 	
 	def listar_turmas_por_escola(self, escola_buscada):
-		try:
-			lista_turmas_sql = ('''SELECT * FROM turma JOIN escola ON turma.id_escola = escola.id_escola WHERE escola.nome = (:escola)''')
-			self.cursor.execute(lista_turmas_sql, {"escola" : escola_buscada})
-			tuplas_turma = self.cursor.fetchall()
-			turmas_obj = []
-			for tupla in tuplas_turma:
-				turma_obj = Turma(tupla[0], tupla[1], tupla[2], tupla[5], tupla[7], tupla[3], tupla[4])
-				turmas_obj.append(turma_obj)
-			return turmas_obj
-		except Exception as e:
-			print(f"❌ Erro no banco: {e}")
-			raise ValueError("Erro ao listar turmas por escola no banco de dados.")
-		
+			try:
+				self.connect.row_factory = sqlite3.Row
+				cursor = self.connect.cursor()
+				id_escola = self._limpar_id(escola_buscada)
+				escola_obj = self.buscar_escola_por_id(id_escola, incluir_gestor=False, incluir_turmas=False)
+				if not escola_obj:
+					return []
+				sql = "SELECT * FROM turma WHERE id_escola = ?"
+				cursor.execute(sql, (id_escola,))
+				rows = cursor.fetchall()
+				turmas_encontradas = []
+				from src.models.turma import Turma
+				for row in rows:
+					turma_obj = Turma(
+						id_turma=row["id_turma"],
+						nome=row["nome"],
+						ano_letivo=row["ano_letivo"],
+						escola_associada=escola_obj,
+						turno=row["turno"],
+						capacidade_maxima=row["capacidade_maxima"]
+					)
+					turmas_encontradas.append(turma_obj)
+				return turmas_encontradas
+			except Exception as e:
+				print(f"❌ Erro ao listar turmas da escola: {e}")
+				return []
+			finally:
+				self.connect.row_factory = None
+			
 	def buscar_nota_por_id(self, id_busca):
 			try:
 				self.connect.row_factory = sqlite3.Row
