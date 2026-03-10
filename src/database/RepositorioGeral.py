@@ -440,18 +440,26 @@ class RepositorioGeral:
 
 
 	def buscar_municipio_por_id(self, id_busca):
-		try:
-			busca_tupla_sql = ('''SELECT * FROM municipio WHERE id_municipio = (:id_municipio)''')
-			self.cursor.execute(busca_tupla_sql, {"id_municipio": id_busca})
-			tupla_sql = self.cursor.fetchone()
-			if tupla_sql:
-				municipio_obj = Municipio(tupla_sql[1], tupla_sql[0], tupla_sql[2], tupla_sql[3], tupla_sql[4])
-				return municipio_obj
-			else:
+			try:
+				self.connect.row_factory = sqlite3.Row
+				cursor = self.connect.cursor()
+				cursor.execute("SELECT * FROM municipio WHERE id_municipio = ?", (id_busca,))
+				row = cursor.fetchone()
+				if not row:
+					return None
+				from src.models.municipio import Municipio
+				return Municipio(
+					nome=row["nome"],
+					id_municipio=row["id_municipio"],
+					estado=row["estado"],
+					verba_disponivel_municipio=row["verba_disponivel_municipio"],
+					nota_de_corte=row["nota_de_corte"]
+				)
+			except Exception as e:
+				print(f"❌ Erro ao reconstruir objeto Municipio: {e}")
 				return None
-		except Exception as e:
-			print(f"❌ Erro no banco: {e}")
-			raise ValueError("Erro ao buscar município no banco de dados.")
+			finally:
+				self.connect.row_factory = None
 	
 	def listar_municipios(self):
 		try:
@@ -496,18 +504,37 @@ class RepositorioGeral:
 			raise ValueError("Erro ao listar secretários no banco de dados.")
 		
 	def buscar_gestor_por_id(self, id_busca):
-		try:
-			busca_tupla_sql = ('''SELECT * FROM usuario JOIN gestor ON usuario.id_usuario = gestor.id_usuario WHERE usuario.id_usuario = (:id_usuario)''')
-			self.cursor.execute(busca_tupla_sql, {"id_usuario": id_busca})
-			tupla_sql = self.cursor.fetchone()
-			if tupla_sql:
-				gestor_obj = Gestor(tupla_sql[0], tupla_sql[2], tupla_sql[1], tupla_sql[3], tupla_sql[4], tupla_sql[5], tupla_sql[6], tupla_sql[11])
-				return gestor_obj
-			else:
+			try:
+				self.connect.row_factory = sqlite3.Row
+				cursor = self.connect.cursor()
+				sql = '''SELECT * FROM usuario 
+						JOIN gestor ON usuario.id_usuario = gestor.id_usuario 
+						WHERE usuario.id_usuario = ?'''
+				cursor.execute(sql, (id_busca,))
+				row = cursor.fetchone()
+				if not row:
+					return None
+				data_nasc = str(row["data_nascimento"])
+				if "-" in data_nasc:
+					p = data_nasc.split(" ")[0].split("-")
+					data_nasc = f"{p[2]}/{p[1]}/{p[0]}"
+				escola_obj = self.buscar_escola_por_id(row["id_escola"])
+				from src.models.gestor import Gestor
+				return Gestor(
+					id_usuario=row["id_usuario"],
+					nome=row["nome"],
+					cpf=row["cpf"],
+					email=row["email"],
+					senha=row["senha"],
+					telefone=row["telefone"],
+					data_nascimento=data_nasc,
+					escola_associada=escola_obj
+				)
+			except Exception as e:
+				print(f"❌ Erro ao reconstruir objeto Gestor: {e}")
 				return None
-		except Exception as e:
-			print(f"❌ Erro no banco: {e}")
-			raise ValueError("Erro ao buscar gestor no banco de dados.")
+			finally:
+				self.connect.row_factory = None
 		
 	def listar_gestores(self):
 		try:
@@ -578,20 +605,72 @@ class RepositorioGeral:
 		except Exception as e:
 			print(f"❌ Erro no banco: {e}")
 			raise ValueError("Erro ao listar alunos no banco de dados.")
-		
+
 	def buscar_escola_por_id(self, id_busca):
-		try:
-			busca_tupla_sql = ('''SELECT * FROM escola JOIN municipio ON escola.id_municipio = municipio.id_municipio WHERE escola.id_escola = (:id_escola)''')
-			self.cursor.execute(busca_tupla_sql, {"id_escola": id_busca})
-			tupla_sql = self.cursor.fetchone()
-			if tupla_sql:
-				escola_obj = Escola(tupla_sql[1], tupla_sql[6], tupla_sql[0], tupla_sql[5], tupla_sql[2], tupla_sql[4], tupla_sql[8], tupla_sql[3])
+			try:
+				self.connect.row_factory = sqlite3.Row
+				cursor = self.connect.cursor()
+				id_limpo = self._limpar_id(id_busca)
+			
+				sql = "SELECT * FROM escola WHERE id_escola = ?"
+				cursor.execute(sql, (id_limpo,))
+				row = cursor.fetchone()
+				if not row:
+					return None
+				municipio_obj = self.buscar_municipio_por_id(row["id_municipio"])
+				gestor_obj = None
+				if row["id_gestor"]:
+					gestor_obj = self.buscar_gestor_por_id(row["id_gestor"])
+				from src.models.escola import Escola
+				escola_obj = Escola(
+					nome=row["nome"],
+					id_localizacao=row["id_localizacao"],
+					id_escola=row["id_escola"],
+					gestor_atual=gestor_obj,
+					verba_disponivel_escola=row["verba_disponivel_escola"],
+					id_municipio=row["id_municipio"],
+					capacidade_infraestrutura=row["capacidade_infraestrutura"],
+					municipio=municipio_obj
+				)
 				return escola_obj
-			else:
+			except Exception as e:
+				print(f"❌ Erro ao buscar escola por ID {id_busca}: {e}")
 				return None
+			finally:
+				self.connect.row_factory = None		
+	
+	def buscar_escolas_por_municipio(self, municipio):
+		try:
+			self.connect.row_factory = sqlite3.Row
+			cursor = self.connect.cursor()
+			id_mun = self._limpar_id(municipio)
+			sql = "SELECT * FROM escola WHERE id_municipio = ?"
+			cursor.execute(sql, (id_mun,))
+			rows = cursor.fetchall()
+			escolas_encontradas = []
+			for row in rows:
+				municipio_obj = self.buscar_municipio_por_id(row["id_municipio"])
+				gestor_obj = None
+				if row["id_gestor"]:
+					gestor_obj = self.buscar_gestor_por_id(row["id_gestor"])
+				from src.models.escola import Escola
+				escola_obj = Escola(
+					nome=row["nome"],
+					id_localizacao=row["id_localizacao"],
+					id_escola=row["id_escola"],
+					gestor_atual=gestor_obj,
+					verba_disponivel_escola=row["verba_disponivel_escola"],
+					id_municipio=row["id_municipio"],	
+					capacidade_infraestrutura=row["capacidade_infraestrutura"],
+					municipio=municipio_obj
+				)
+				escolas_encontradas.append(escola_obj)
+			return escolas_encontradas
 		except Exception as e:
-			print(f"❌ Erro no banco: {e}")
-			raise ValueError("Erro ao buscar escola no banco de dados.")
+			print(f"❌ Erro ao buscar escolas do município {municipio}: {e}")
+			return []
+		finally:
+			self.connect.row_factory = None
 		
 	def buscar_turma_por_id(self, id_busca):
 		try:
@@ -763,3 +842,37 @@ class RepositorioGeral:
 		except Exception as e:
 			print(f"❌ Erro no banco: {e}")
 			raise ValueError("Erro ao listar frequência por diário no banco de dados.")
+		
+	def buscar_demandas_por_escola(self, escola_input):
+			try:
+				self.connect.row_factory = sqlite3.Row
+				cursor = self.connect.cursor()
+				id_esc = self._limpar_id(escola_input)
+				sql = '''SELECT * FROM demanda 
+						JOIN demanda_infraestrutura ON demanda.id_demanda = demanda_infraestrutura.id_demanda 
+						WHERE demanda_infraestrutura.id_escola = ?'''
+				cursor.execute(sql, (id_esc,))
+				rows = cursor.fetchall()
+				demandas_encontradas = []
+				for row in rows:
+					from src.models.demanda import Demanda
+					escola_obj = self.buscar_escola_por_id(row["id_escola"])
+					demanda_obj = Demanda(
+						id_demanda=row["id_demanda"],
+						id_escola=row["id_escola"],
+						escola=escola_obj,
+						titulo=row["titulo"],
+						descricao=row["descricao"],
+						valor_estimado=row["valor_estimado"],
+						tipo_demanda=row["tipo_demanda"],
+						status=row["status"],
+						data_solicitacao=row["data_solicitacao"],
+						prioridade=row["prioridade"]
+					)
+					demandas_encontradas.append(demanda_obj)
+				return demandas_encontradas
+			except Exception as e:
+				print(f"❌ Erro ao buscar demandas da escola {escola_input}: {e}")
+				return []
+			finally:
+				self.connect.row_factory = None
