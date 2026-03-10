@@ -11,7 +11,8 @@ from typing import List
 import importlib
 import typer
 from src.cli.secretario_cli import app as secretario_app
-
+from src.cli.aluno_cli import app as aluno_app
+from src.cli.professor_cli import app as professor_app
 
 def registrar_comandos(main_app):
     main_app.add_typer(secretario_app, name="secretario")
