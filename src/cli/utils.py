@@ -155,6 +155,14 @@ class ValidadorCLI:
         """
         return opcao.upper() in [opt.upper() for opt in opcoes_validas]
 
+    @staticmethod
+    def limpar_cpf(cpf: str) -> str:
+        """
+        Remove caracteres não numéricos de uma string de CPF.
+        Ex: "123.456.789-01" -> "12345678901"
+        """
+        return re.sub(r'\D', '', cpf)
+
 
 class GerenciadorSessao:
     _instancia = None

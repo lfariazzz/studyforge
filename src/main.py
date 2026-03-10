@@ -23,7 +23,7 @@ def login():
     # Como não estamos mais usando invoke/forward complexo, 
     # o Typer gerencia os prompts automaticamente aqui.
     cpf = typer.prompt("Digite seu CPF")
-    senha = typer.prompt("Sua senha", hide_input=True)
+    senha = typer.prompt("Sua senha")
     
     sucesso, mensagem = auth_system.fazer_login(cpf, senha)
     console.print(mensagem)
