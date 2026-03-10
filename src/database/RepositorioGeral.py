@@ -477,17 +477,37 @@ class RepositorioGeral:
 		
 	def buscar_secretario_por_id(self, id_busca):
 		try:
-			busca_tupla_sql = ('''SELECT * FROM usuario JOIN secretario ON usuario.id_usuario = secretario.id_usuario WHERE usuario.id_usuario = (:id_usuario)''')
-			self.cursor.execute(busca_tupla_sql, {"id_usuario": id_busca})
-			tupla_sql = self.cursor.fetchone()
-			if tupla_sql:
-				secretario_obj = Secretario(tupla_sql[0], tupla_sql[2], tupla_sql[1], tupla_sql[3], tupla_sql[4], tupla_sql[5], tupla_sql[6], tupla_sql[12], tupla_sql[11])
-				return secretario_obj
-			else:
+			self.connect.row_factory = sqlite3.Row
+			cursor = self.connect.cursor()
+			sql = '''SELECT * FROM usuario 
+					JOIN secretario ON usuario.id_usuario = secretario.id_usuario 
+					WHERE usuario.id_usuario = ?'''
+			cursor.execute(sql, (id_busca,))
+			row = cursor.fetchone()
+			if not row:
 				return None
+			data_nasc = str(row["data_nascimento"])
+			if "-" in data_nasc:
+				p = data_nasc.split(" ")[0].split("-")
+				data_nasc = f"{p[2]}/{p[1]}/{p[0]}"
+			mun_obj = self.buscar_municipio_por_id(row["id_municipio"])
+			from src.models.secretario import Secretario
+			return Secretario(
+				id_usuario=row["id_usuario"],
+				nome=row["nome"],
+				cpf=row["cpf"],
+				email=row["email"],
+				senha=row["senha"],
+				telefone=row["telefone"],
+				data_nascimento=data_nasc,
+				municipio_responsavel=mun_obj,
+				departamento=row["departamento"]
+			)
 		except Exception as e:
-			print(f"❌ Erro no banco: {e}")
-			raise ValueError("Erro ao buscar secretário no banco de dados.")
+			print(f"❌ Erro ao reconstruir objeto Secretario: {e}")
+			return None
+		finally:
+			self.connect.row_factory = None
 		
 	def listar_secretarios(self):
 		try:
@@ -552,17 +572,41 @@ class RepositorioGeral:
 		
 	def buscar_professor_por_id(self, id_busca):
 		try:
-			busca_tupla_sql = ('''SELECT * FROM usuario JOIN professor ON usuario.id_usuario = professor.id_usuario WHERE usuario.id_usuario = (:id_usuario)''')
-			self.cursor.execute (busca_tupla_sql, {"id_usuario": id_busca})
-			tupla_sql = self.cursor.fetchone()
-			if tupla_sql:
-				professor_obj = Professor(tupla_sql[0], tupla_sql[2], tupla_sql[1], tupla_sql[3], tupla_sql[4], tupla_sql[5], tupla_sql[6], tupla_sql[14], tupla_sql[15], tupla_sql[12], tupla_sql[13], tupla_sql[11])
-				return professor_obj
-			else:
+			self.connect.row_factory = sqlite3.Row
+			cursor = self.connect.cursor()
+			id_limpo = self._limpar_id(id_busca)
+			sql = '''SELECT * FROM usuario 
+					JOIN professor ON usuario.id_usuario = professor.id_usuario 
+					WHERE usuario.id_usuario = ?'''
+			cursor.execute(sql, (id_limpo,))
+			row = cursor.fetchone()
+			if not row:
 				return None
+			data_nasc = str(row["data_nascimento"])
+			if "-" in data_nasc:
+				p = data_nasc.split(" ")[0].split("-")
+				data_nasc = f"{p[2]}/{p[1]}/{p[0]}"
+			escola_obj = self.buscar_escola_por_id(row["id_escola"])
+			from src.models.professor import Professor
+			return Professor(
+				id_usuario=row["id_usuario"],
+				nome=row["nome"],
+				cpf=row["cpf"],
+				email=row["email"],
+				senha=row["senha"],
+				telefone=row["telefone"],
+				data_nascimento=data_nasc,
+				registro_funcional=row["registro_funcional"],
+				escola_associada=escola_obj,
+				titulacao=row["titulacao"],
+				area_atuacao=row["area_atuacao"],
+				salario=row["salario"]
+			)
 		except Exception as e:
-			print(f"❌ Erro no banco: {e}")
-			raise ValueError("Erro ao buscar professor no banco de dados.")
+			print(f"❌ Erro ao reconstruir objeto Professor: {e}")
+			return None
+		finally:
+			self.connect.row_factory = None
 		
 	def listar_professores(self):
 		try:
@@ -580,17 +624,38 @@ class RepositorioGeral:
 		
 	def buscar_aluno_por_id(self, id_busca):
 		try:
-			busca_tupla_sql = ('''SELECT * FROM usuario JOIN aluno ON usuario.id_usuario = aluno.id_usuario WHERE usuario.id_usuario = (:id_usuario)''')
-			self.cursor.execute(busca_tupla_sql, {"id_usuario": id_busca})
-			tupla_sql = self.cursor.fetchone()
-			if tupla_sql:
-				aluno_obj = Aluno(tupla_sql[0], tupla_sql[2], tupla_sql[1], tupla_sql[3], tupla_sql[4], tupla_sql[5], tupla_sql[6], tupla_sql[12], tupla_sql[11])
-				return aluno_obj
-			else:
+			self.connect.row_factory = sqlite3.Row
+			cursor = self.connect.cursor()
+			id_limpo = self._limpar_id(id_busca)
+			sql = '''SELECT * FROM usuario 
+					JOIN aluno ON usuario.id_usuario = aluno.id_usuario 
+					WHERE usuario.id_usuario = ?'''
+			cursor.execute(sql, (id_limpo,))
+			row = cursor.fetchone()
+			if not row:
 				return None
+			data_nasc = str(row["data_nascimento"])
+			if "-" in data_nasc:
+				p = data_nasc.split(" ")[0].split("-")
+				data_nasc = f"{p[2]}/{p[1]}/{p[0]}"
+			turma_obj = self.buscar_turma_por_id(row["id_turma"])
+			from src.models.aluno import Aluno
+			return Aluno(
+				id_usuario=row["id_usuario"],
+				nome=row["nome"],
+				cpf=row["cpf"],
+				email=row["email"],
+				senha=row["senha"],
+				telefone=row["telefone"],
+				data_nascimento=data_nasc,
+				turma_associada=turma_obj,
+				matricula=row["matricula"]
+			)
 		except Exception as e:
-			print(f"❌ Erro no banco: {e}")
-			raise ValueError("Erro ao buscar aluno no banco de dados.")
+			print(f"❌ Erro ao reconstruir objeto Aluno: {e}")
+			return None
+		finally:
+			self.connect.row_factory = None
 		
 	def listar_alunos(self):
 		try:
@@ -672,24 +737,6 @@ class RepositorioGeral:
 		finally:
 			self.connect.row_factory = None
 		
-	def buscar_turma_por_id(self, id_busca):
-		try:
-			self.connect.row_factory = sqlite3.Row
-			cursor = self.connect.cursor()
-			cursor.execute("SELECT * FROM turma WHERE id_turma = ?", (id_busca,))
-			row = cursor.fetchone()
-			if not row: return None
-
-			from src.models.turma import Turma
-			escola_obj = self.buscar_escola_por_id(row["id_escola"])
-            
-			return Turma(
-				id_turma=row["id_turma"], nome=row["nome"], ano_letivo=row["ano_letivo"], id_escola=row["id_escola"],
-				escola=escola_obj, turno=row["turno"], capacidade_maxima=row["capacidade_maxima"]
-			)
-		finally:
-			self.connect.row_factory = None
-		
 	def listar_turmas(self):
 		try:
 			lista_turmas_sql = ('''SELECT * FROM turma JOIN escola ON turma.id_escola = escola.id_escola''')
@@ -719,18 +766,32 @@ class RepositorioGeral:
 			raise ValueError("Erro ao listar turmas por escola no banco de dados.")
 		
 	def buscar_nota_por_id(self, id_busca):
-		try:
-			busca_tupla_sql = ('''SELECT * FROM nota JOIN aluno ON nota.id_aluno = aluno.id_usuario JOIN usuario ON nota.id_aluno = usuario.id_usuario WHERE nota.id_nota = (:id_nota)''')
-			self.cursor.execute(busca_tupla_sql, {"id_nota": id_busca})
-			tupla_sql = self.cursor.fetchone()
-			if tupla_sql:
-				nota_obj = Nota(tupla_sql[0], tupla_sql[5], tupla_sql[12], tupla_sql[6], tupla_sql[1], tupla_sql[2], tupla_sql[3], tupla_sql[4])
-				return nota_obj
-			else:
+			try:
+				self.connect.row_factory = sqlite3.Row
+				cursor = self.connect.cursor()
+				id_limpo = self._limpar_id(id_busca)
+				sql = "SELECT * FROM nota WHERE id_nota = ?"
+				cursor.execute(sql, (id_limpo,))
+				row = cursor.fetchone()
+				if not row:
+					return None
+
+				aluno_obj = self.buscar_aluno_por_id(row["id_aluno"])		
+				from src.models.nota import Nota
+				return Nota(
+					id_nota=row["id_nota"],
+					aluno=aluno_obj,
+					valor=row["valor"],
+					disciplina=row["disciplina"],
+					bimestre=row["bimestre"],
+					ano_letivo=row["ano_letivo"],
+					data_lancamento=row["data_lancamento"]
+				)
+			except Exception as e:
+				print(f"❌ Erro ao reconstruir objeto Nota: {e}")
 				return None
-		except Exception as e:
-			print(f"❌ Erro no banco: {e}")
-			raise ValueError("Erro ao buscar nota no banco de dados.")
+			finally:
+				self.connect.row_factory = None
 		
 	def listar_notas_por_aluno(self, id_aluno):
 		try:
@@ -762,17 +823,32 @@ class RepositorioGeral:
 		
 	def buscar_diario_por_id(self, id_busca):
 		try:
-			busca_tupla_sql = ('''SELECT * FROM diario JOIN professor ON diario.id_professor = professor.id_usuario JOIN usuario ON professor.id_usuario = usuario.id_usuario WHERE diario.id_diario = (:id_diario)''')
-			self.cursor.execute(busca_tupla_sql, {"id_diario": id_busca})
-			tupla_sql = self.cursor.fetchone()
-			if tupla_sql:
-				diario_obj = Diario(tupla_sql[0], tupla_sql[4], tupla_sql[14], tupla_sql[5], tupla_sql[1], tupla_sql[2], tupla_sql[3])
-				return diario_obj
-			else:
+			self.connect.row_factory = sqlite3.Row
+			cursor = self.connect.cursor()
+			id_limpo = self._limpar_id(id_busca)
+			sql = "SELECT * FROM diario WHERE id_diario = ?"
+			cursor.execute(sql, (id_limpo,))
+			row = cursor.fetchone()
+			if not row:
 				return None
+			professor_obj = self.buscar_professor_por_id(row["id_professor"])
+			turma_obj = self.buscar_turma_por_id(row["id_turma"])
+			from src.models.diario import Diario
+			return Diario(
+				id_diario=row["id_diario"],
+				disciplina=row["disciplina"],
+				data=row["data"],
+				conteudo=row["conteudo"],
+				professor=professor_obj,
+				id_professor=row["id_professor"],
+				id_turma=row["id_turma"],
+				turma=turma_obj
+			)
 		except Exception as e:
-			print(f"❌ Erro no banco: {e}")
-			raise ValueError("Erro ao buscar diário no banco de dados.")
+			print(f"❌ Erro ao reconstruir objeto Diário: {e}")
+			return None
+		finally:
+			self.connect.row_factory = None
 
 	def listar_diario_por_turma(self, id_turma):
 		try:
@@ -787,6 +863,7 @@ class RepositorioGeral:
 		except Exception as e:
 			print(f"❌ Erro no banco: {e}")
 			raise ValueError("Erro ao listar diário por turma no banco de dados.")	
+		
 	def listar_diario_por_professor(self, id_professor):
 		try:
 			lista_diarios_sql = ('''SELECT * FROM diario JOIN professor ON diario.id_professor = professor.id_usuario JOIN usuario ON professor.id_usuario = usuario.id_usuario WHERE professor.id_usuario = (:id_professor)''')
@@ -803,17 +880,30 @@ class RepositorioGeral:
 		
 	def buscar_frequencia_por_id(self, id_busca):
 		try:
-			busca_tupla_sql = ('''SELECT * FROM frequencia JOIN aluno ON frequencia.id_aluno = aluno.id_usuario JOIN usuario ON aluno.id_usuario = usuario.id_usuario JOIN diario ON frequencia.id_diario = diario.id_diario WHERE frequencia.id_frequencia = (:id_frequencia)''')
-			self.cursor.execute(busca_tupla_sql, {"id_frequencia": id_busca})
-			tupla_sql = self.cursor.fetchone()
-			if tupla_sql:
-				frequencia_obj = Frequencia(tupla_sql[0], tupla_sql[2], tupla_sql[9], tupla_sql[3], tupla_sql[1])
-				return frequencia_obj
-			else:
+			self.connect.row_factory = sqlite3.Row
+			cursor = self.connect.cursor()
+			id_limpo = self._limpar_id(id_busca)
+			sql = "SELECT * FROM frequencia WHERE id_frequencia = ?"
+			cursor.execute(sql, (id_limpo,))
+			row = cursor.fetchone()
+			if not row:
 				return None
+			aluno_obj = self.buscar_aluno_por_id(row["id_aluno"])
+			diario_obj = self.buscar_diario_por_id(row["id_diario"])
+			from src.models.frequencia import Frequencia
+			return Frequencia(
+				id_frequencia=row["id_frequencia"],
+				status=row["status"],
+				aluno=aluno_obj,
+				id_aluno=row["id_aluno"],
+				diario=diario_obj,
+				id_diario=row["id_diario"]
+			)
 		except Exception as e:
-			print(f"❌ Erro no banco: {e}")
-			raise ValueError("Erro ao buscar frequência no banco de dados.")
+			print(f"❌ Erro ao reconstruir objeto Frequência: {e}")
+			return None
+		finally:
+			self.connect.row_factory = None
 	
 	def listar_frequencia_por_aluno(self, id_aluno):
 		try:
