@@ -220,7 +220,7 @@ class RepositorioGeral:
 			return None
 		if isinstance(valor, (int, float, str)):
 			return valor
-		ordem_busca = [ "_id_frequencia", "_id_nota", "_id_diario", "_id_demanda", "_id_turma", "_id_escola", "_id_usuario", "_id_municipio"]
+		ordem_busca = [ "_id_frequencia", "_id_nota", "_id_diario", "_id_demanda", "_id_turma", "_id_escola", "_id_usuario", "_id_municipio", "_id_localizacao"]
 		for attr in ordem_busca:
 			if hasattr(valor, attr):
 				res = getattr(valor, attr)
@@ -271,21 +271,25 @@ class RepositorioGeral:
 	def salvar_escola(self, escola_obj):
 		try:
 			dados = escola_obj.to_dict()
-			codigo_SQL = ('''INSERT INTO escola(nome, id_localizacao, id_escola, id_gestor, verba_disponivel_escola, id_municipio, capacidade_infraestrutura) VALUES (:nome, :id_localizacao, :id_escola, :id_gestor, :verba_disponivel_escola, :id_municipio, :capacidade_infraestrutura)''')
+			dados["id_municipio"] = self._limpar_id(dados.get("id_municipio"))
+			dados["id_gestor"] = self._limpar_id(dados.get("id_gestor"))
+			id_loc = self._limpar_id(dados.get("id_localizacao"))
+			dados["id_localizacao"] = id_loc if id_loc is not None else 1
+			codigo_SQL = ('''INSERT INTO escola(nome, id_localizacao, id_gestor, verba_disponivel_escola, id_municipio, capacidade_infraestrutura) VALUES (:nome, :id_localizacao, :id_gestor, :verba_disponivel_escola, :id_municipio, :capacidade_infraestrutura)''')
 			self.cursor.execute(codigo_SQL, dados)
-			escola_obj._id_escola = self.cursor.lastrowid
-			if escola_obj._id_endereco:
-				dados_endereco = escola_obj._endereco.to_dict()
-				dados_endereco["id_escola"] = escola_obj._id_endereco
-				dados_endereco["id_localizacao"] = 1
-				sql_endereco = ('''INSERT INTO escola_endereco(id_escola, id_localizacao, cep, rua, numero, bairro) VALUES (:id_escola, :id_localizacao, :cep, :rua, :numero, :bairro)''')
-				self.cursor.execute(sql_endereco, dados_endereco)
-				escola_obj._id_endereco._id_localizacao = 1
+			escola_id = self.cursor.lastrowid
+			escola_obj._id_escola = escola_id
+			if hasattr(escola_obj, '_endereco') and escola_obj._endereco:
+				dados_end = escola_obj._endereco.to_dict()
+				dados_end["id_escola"] = escola_id
+				dados_end["id_localizacao"] = 1 # Primeiro endereço da unidade
+				sql_end = ('''INSERT INTO escola_endereco(id_escola, id_localizacao, cep, rua, numero, bairro) VALUES (:id_escola, :id_localizacao, :cep, :rua, :numero, :bairro)''')
+				self.cursor.execute(sql_end, dados_end)
 			self.connect.commit()
 		except Exception as e:
 			self.connect.rollback()
-			print(f"❌ Erro no banco: {e}")
-			raise ValueError("Erro ao salvar escola no banco de dados.")
+			print(f"❌ Erro no banco ao salvar escola {escola_obj.nome}: {e}")
+			raise ValueError(f"Erro ao salvar escola no banco de dados: {e}")
 
 	def salvar_turma(self, turma_obj):
 		try:
