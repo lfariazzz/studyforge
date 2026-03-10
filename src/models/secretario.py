@@ -101,19 +101,15 @@ class Secretario(Usuario):
             str: String formatada contendo informacoes do perfil do secretario.
         """
         nome_municipio = self.municipio_responsavel.nome if hasattr(self.municipio_responsavel, 'nome') else "Não informado"
-        status_conta = "Ativa" if self._status else "Inativa/Suspensa"
-
+        
         return (
-            f"\n" + "="*40 + "\n"
-            f"          PERFIL DO SECRETÁRIO\n"
-            f"="*40 + "\n"
             f"Nome: {self.nome}\n"
-            f"ID Identificador: {self.id_usuario}\n"
+            f"CPF: {self.cpf}\n"
+            f"ID Usuário: {self.id_usuario}\n"
+            f"E-mail: {self.email}\n"
             f"Município: {nome_municipio}\n"
             f"Departamento: {self.departamento}\n"
-            f"E-mail: {self.email}\n"
-            f"Status: {status_conta}\n"
-            f"="*40
+            f"Status: {'Ativo' if self._status else 'Inativo'}"
         )
 
     def ver_estatisticas(self, lista_escola):
@@ -137,16 +133,31 @@ class Secretario(Usuario):
         if not self._status:
             return "Conta do Secretário está desativada"
         
+        # Se a lista vier vazia do repositório por causa do erro de ID, 
+        # o relatório sempre será zero. 
+        if not lista_escola:
+            return (
+                f"Relatório do Município {self.municipio_responsavel.nome}:\n"
+                f"[yellow]Nenhuma escola carregada ou erro no processamento.[/yellow]"
+            )
+
         total_escolas_municipio = 0
         verba_total_municipio = self.municipio_responsavel.verba_disponivel_municipio
         total_solicitacoes = 0
 
-        if not all(escola in self.municipio_responsavel.escolas_situadas for escola in lista_escola):
-            return "Acesso negado a lista de escolas por elas não serem do município."
-        
+        # Loop para processar as estatísticas
         for escola in lista_escola:
-            total_escolas_municipio += 1
-            total_solicitacoes += len(escola._solicitacoes_enviadas)
+            # Verificação simplificada: checa se o ID do município da escola bate com o do secretário
+            # Isso é mais seguro que comparar o objeto inteiro na lista 'escolas_situadas'
+            id_mun_escola = getattr(escola, 'id_municipio', None)
+            id_mun_sec = getattr(self.municipio_responsavel, 'id_municipio', None)
+
+            if id_mun_escola == id_mun_sec:
+                total_escolas_municipio += 1
+                
+                # Acessa as solicitações com segurança
+                solicitacoes = getattr(escola, '_solicitacoes_enviadas', [])
+                total_solicitacoes += len(solicitacoes)
 
         return (
             f"Relatório do Município {self.municipio_responsavel.nome}:\n"
