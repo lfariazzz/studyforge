@@ -63,7 +63,7 @@ class RepositorioGeral:
     "capacidade_infraestrutura" 	INTEGER DEFAULT 500,     
 	FOREIGN KEY("id_gestor") REFERENCES "gestor"("id_usuario"),
 	FOREIGN KEY("id_municipio") REFERENCES "municipio"("id_municipio"),
-    FOREIGN KEY("id_localizacao") REFERENCES "escola_id_endereco"("id_localizacao")
+    FOREIGN KEY("id_localizacao") REFERENCES "escola_endereco"("id_localizacao")
     );
                          
     CREATE TABLE IF NOT EXISTS escola_endereco(
@@ -152,13 +152,14 @@ class RepositorioGeral:
     );
                          
     CREATE TABLE IF NOT EXISTS nota(
-	"id_nota"	INTEGER PRIMARY KEY AUTOINCREMENT,
+	"id_nota"	INTEGER,
 	"id_aluno"	INTEGER,
 	"id_turma"	INTEGER,
 	"disciplina"	TEXT NOT NULL,
 	"valor"	REAL NOT NULL CHECK("valor" >= 0 AND "valor" <= 10),
 	"data"	TEXT NOT NULL,
 	"tipo"	TEXT NOT NULL,
+	PRIMARY KEY("id_nota" AUTOINCREMENT),
 	FOREIGN KEY("id_aluno") REFERENCES "aluno"("id_usuario") ON DELETE RESTRICT,
 	FOREIGN KEY("id_turma") REFERENCES "turma"("id_turma")
     );
@@ -175,20 +176,22 @@ class RepositorioGeral:
     );
                          
     CREATE TABLE IF NOT EXISTS frequencia(
-	"id_frequencia"	INTEGER PRIMARY KEY AUTOINCREMENT,
+	"id_frequencia"	INTEGER,
 	"status"	TEXT NOT NULL CHECK("status" IN ('PRESENTE', 'AUSENTE')),
 	"id_aluno"	INTEGER,
 	"id_diario"	INTEGER,
+	PRIMARY KEY("id_frequencia" AUTOINCREMENT),
 	FOREIGN KEY("id_aluno") REFERENCES "aluno"("id_usuario") ON DELETE RESTRICT,
 	FOREIGN KEY("id_diario") REFERENCES "diario"("id_diario") ON DELETE CASCADE
     );
                          
     CREATE TABLE IF NOT EXISTS configuracoes(
-	"id_config"	INTEGER PRIMARY KEY AUTOINCREMENT,
+	"id_config"	INTEGER,
 	"frequencia_minima"	REAL DEFAULT 0.75 CHECK("frequencia_minima" >= 0 AND "frequencia_minima" <= 1),
 	"indice_lacuna_maximo"	REAL DEFAULT 0.3 CHECK("indice_lacuna_maximo" >= 0 AND "indice_lacuna_maximo" <= 1),
 	"limite_custo_demanda"	REAL DEFAULT 15000.0 CHECK("limite_custo_demanda" >= 0),
 	"id_municipio"	INTEGER UNIQUE, -- referencia municipio na classe
+	PRIMARY KEY("id_config" AUTOINCREMENT),
 	FOREIGN KEY("id_municipio") REFERENCES "municipio"("id_municipio")
     );
                          
@@ -212,6 +215,12 @@ class RepositorioGeral:
 		self.connect.commit()
 
 	""""Métodos responsáveis por salvar os objetos do sistema no banco de dados SQLite."""
+	def _limpar_id(self, valor):
+		for attr in ["_id_usuario", "_id_municipio", "_id_escola", "_id_turma", "_id_diario"]:
+			if hasattr(valor, attr):
+				return getattr(valor, attr)
+		return valor
+
 	def salvar_municipio(self, municipio_obj):
 		try:
 			dados = municipio_obj.to_dict()
@@ -221,8 +230,8 @@ class RepositorioGeral:
 			self.connect.commit()
 		except Exception as e:
 			self.connect.rollback()
-			print(f"❌ Erro no banco: {e}")
-			raise ValueError("Erro ao salvar município no banco de dados.")
+			print(f"❌ Erro no banco ao salvar município {municipio_obj.nome}: {e}")
+			raise ValueError(f"Erro ao salvar município no banco de dados: {e}")
 		
 	def salvar_usuario(self, usuario_obj):
 		try:
@@ -232,6 +241,10 @@ class RepositorioGeral:
 			usuario_obj._id_usuario = self.cursor.lastrowid
 			dados_especificos = usuario_obj.to_dict_especifico()
 			dados_especificos["id_usuario"] = usuario_obj._id_usuario
+			chaves_para_limpar = ["id_municipio", "id_escola", "id_turma", "municipio", "escola", "turma"]
+			for chave in chaves_para_limpar:
+				if chave in dados_especificos:
+					dados_especificos[chave] = self._limpar_id(dados_especificos[chave])
 			sql_filha = None
 			if usuario_obj._tipo == "SECRETARIO":
 				sql_filha = ('''INSERT INTO secretario(id_usuario, id_municipio, departamento) VALUES (:id_usuario, :id_municipio, :departamento)''')
@@ -246,8 +259,8 @@ class RepositorioGeral:
 			self.connect.commit()
 		except Exception as e:
 			self.connect.rollback()
-			print(f"❌ Erro no banco: {e}")
-			raise ValueError("Erro ao salvar usuário no banco de dados.")
+			print(f"❌ Erro no banco ao salvar {usuario_obj._tipo}: {e}")
+			raise ValueError(f"Erro ao salvar usuário no banco de dados: {e}")
 		
 	def salvar_escola(self, escola_obj):
 		try:
@@ -271,18 +284,21 @@ class RepositorioGeral:
 	def salvar_turma(self, turma_obj):
 		try:
 			dados = turma_obj.to_dict()
+			dados["id_escola"] = self._limpar_id(dados.get("id_escola"))
 			codigo_SQL = ('''INSERT INTO turma(nome, ano_letivo, id_escola, turno, capacidade_maxima) VALUES (:nome, :ano_letivo, :id_escola, :turno, :capacidade_maxima)''')
 			self.cursor.execute(codigo_SQL, dados)
 			turma_obj._id_turma = self.cursor.lastrowid
 			self.connect.commit()
 		except Exception as e:
 			self.connect.rollback()
-			print(f"❌ Erro no banco: {e}")
-			raise ValueError("Erro ao salvar turma no banco de dados.")
+			print(f"❌ Erro no banco ao salvar turma {turma_obj.nome}: {e}")
+			raise ValueError(f"Erro ao salvar turma no banco de dados: {e}")
 		
 	def salvar_nota(self, nota_obj):
 		try:
 			dados = nota_obj.to_dict()
+			dados["id_aluno"] = self._limpar_id(dados.get("id_aluno"))
+			dados["id_turma"] = self._limpar_id(dados.get("id_turma"))
 			codigo_SQL = ('''INSERT INTO nota(id_aluno, id_turma, disciplina, valor, data, tipo) VALUES (:id_aluno, :id_turma, :disciplina, :valor, :data, :tipo)''')
 			self.cursor.execute(codigo_SQL, dados)
 			nota_obj._id_nota = self.cursor.lastrowid
@@ -291,10 +307,12 @@ class RepositorioGeral:
 			self.connect.rollback()
 			print(f"❌ Erro no banco: {e}")
 			raise ValueError("Erro ao salvar nota no banco de dados.")
-		
+
 	def salvar_diario(self, diario_obj):
 		try:
 			dados = diario_obj.to_dict()
+			dados["id_professor"] = self._limpar_id(dados.get("id_professor"))
+			dados["id_turma"] = self._limpar_id(dados.get("id_turma"))
 			codigo_SQL = ('''INSERT INTO diario(disciplina, data, conteudo, id_professor, id_turma) VALUES (:disciplina, :data, :conteudo, :id_professor, :id_turma)''')
 			self.cursor.execute(codigo_SQL, dados)
 			diario_obj._id_diario = self.cursor.lastrowid
@@ -307,6 +325,8 @@ class RepositorioGeral:
 	def salvar_frequencia(self, frequencia_obj):
 		try:
 			dados = frequencia_obj.to_dict()
+			dados["id_aluno"] = self._limpar_id(dados.get("id_aluno"))
+			dados["id_diario"] = self._limpar_id(dados.get("id_diario"))
 			codigo_SQL = ('''INSERT INTO frequencia(status, id_aluno, id_diario) VALUES (:status, :id_aluno, :id_diario)''')
 			self.cursor.execute(codigo_SQL, dados)
 			frequencia_obj._id_frequencia = self.cursor.lastrowid
@@ -319,11 +339,17 @@ class RepositorioGeral:
 	def salvar_demanda(self, demanda_obj):
 		try:
 			dados = demanda_obj.to_dict()
+			dados["id_solicitante"] = self._limpar_id(dados.get("id_solicitante"))
+			dados["id_municipio"] = self._limpar_id(dados.get("id_municipio"))
 			codigo_SQL = ('''INSERT INTO demanda(descricao, prioridade, id_solicitante, id_municipio, tipo, status, data_criacao, ultimo_editor, data_alteracao, alerta_auditoria) VALUES (:descricao, :prioridade, :id_solicitante, :id_municipio, :tipo, :status, :data_criacao, :ultimo_editor, :data_alteracao, :alerta_auditoria)''')
 			self.cursor.execute(codigo_SQL, dados)
 			demanda_obj._id_demanda = self.cursor.lastrowid
 			dados_especificos = demanda_obj._to_dict_especifico()
 			dados_especificos["id_demanda"] = demanda_obj._id_demanda
+			chaves_filhas = ["id_escola", "id_turma", "id_professor"]
+			for chave in chaves_filhas:
+				if chave in dados_especificos:
+					dados_especificos[chave] = self._limpar_id(dados_especificos[chave])
 			SQL_filha = None
 			if demanda_obj._tipo == "INFRAESTRUTURA":
 				SQL_filha = ('''INSERT INTO demanda_infraestrutura(id_demanda, custo_estimado, id_escola) VALUES (:id_demanda, :custo_estimado, :id_escola)''')
@@ -367,7 +393,7 @@ class RepositorioGeral:
 		except Exception as e:
 			print(f"❌ Erro no banco: {e}")
 			raise ValueError("Erro ao buscar usuário por CPF no banco de dados.")
-		
+
 	def buscar_municipio_por_id(self, id_busca):
 		try:
 			busca_tupla_sql = ('''SELECT * FROM municipio WHERE id_municipio = (:id_municipio)''')
@@ -521,34 +547,6 @@ class RepositorioGeral:
 		except Exception as e:
 			print(f"❌ Erro no banco: {e}")
 			raise ValueError("Erro ao buscar escola no banco de dados.")
-	
-	def listar_escolas(self):
-		try:
-			lista_escolas_sql = ('''SELECT * FROM escola JOIN municipio ON escola.id_municipio = municipio.id_municipio''')
-			self.cursor.execute(lista_escolas_sql)
-			tuplas_escola = self.cursor.fetchall()
-			objetos_escola = []
-			for tupla in tuplas_escola:
-				escola_obj = Escola(tupla[1], tupla[6], tupla[0], tupla[5], tupla[2], tupla[4], tupla[8], tupla[3])
-				objetos_escola.append(escola_obj)
-			return objetos_escola
-		except Exception as e:
-			print(f"❌ Erro no banco: {e}")
-			raise ValueError("Erro ao listar escolas no banco de dados.")
-		
-	def listar_escolas_por_municipio(self, municipio_buscado):
-		try:
-			lista_escolas_sql = ('''SELECT * FROM escola JOIN municipio ON escola.id_municipio = municipio.id_municipio WHERE municipio.nome = (:municipio)''')
-			self.cursor.execute(lista_escolas_sql, {"municipio" : municipio_buscado})
-			tuplas_escola = self.cursor.fetchall()
-			escolas_obj = []
-			for tupla in tuplas_escola:
-				escola_obj = Escola(tupla[1], tupla[6], tupla[0], tupla[5], tupla[2], tupla[4], tupla[8], tupla[3])
-				escolas_obj.append(escola_obj)
-			return escolas_obj
-		except Exception as e:
-			print(f"❌ Erro no banco: {e}")
-			raise ValueError("Erro ao listar escolas por município no banco de dados.")
 		
 	def buscar_turma_por_id(self, id_busca):
 		try:
