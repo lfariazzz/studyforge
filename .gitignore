@@ -14,6 +14,7 @@ ENV/
 
 # --- BANCO DE DADOS LOCAL (CRÍTICO PARA VOCÊ) ---
 data/*.db
+*.json
 
 
 # --- FERRAMENTAS DE DESENVOLVIMENTO ---

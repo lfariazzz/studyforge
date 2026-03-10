@@ -282,7 +282,7 @@ class RepositorioGeral:
 			if hasattr(escola_obj, '_endereco') and escola_obj._endereco:
 				dados_end = escola_obj._endereco.to_dict()
 				dados_end["id_escola"] = escola_id
-				dados_end["id_localizacao"] = 1 # Primeiro endereço da unidade
+				dados_end["id_localizacao"] = 1
 				sql_end = ('''INSERT INTO escola_endereco(id_escola, id_localizacao, cep, rua, numero, bairro) VALUES (:id_escola, :id_localizacao, :cep, :rua, :numero, :bairro)''')
 				self.cursor.execute(sql_end, dados_end)
 			self.connect.commit()
@@ -376,33 +376,68 @@ class RepositorioGeral:
 	""""Métodos responsáveis por ler os dados do sistema no banco de dados SQLite e transformar em objetos novamente."""
 	def buscar_usuario_por_cpf(self, cpf_busca):
 		try:
-			busca_tupla_sql = ('''
-				SELECT * FROM usuario 
-                LEFT JOIN secretario ON usuario.id_usuario = secretario.id_usuario
-                LEFT JOIN gestor ON usuario.id_usuario = gestor.id_usuario
-                LEFT JOIN professor ON usuario.id_usuario = professor.id_usuario
-                LEFT JOIN aluno ON usuario.id_usuario = aluno.id_usuario
-                WHERE usuario.cpf = (:cpf)
-			''')
-			self.cursor.execute(busca_tupla_sql, {"cpf": cpf_busca})
-			tupla_sql = self.cursor.fetchone()
-			if not tupla_sql:
+
+			self.connect.row_factory = sqlite3.Row
+			cursor = self.connect.cursor()
+
+			cursor.execute("SELECT * FROM usuario WHERE cpf = ?", (cpf_busca,))
+			u = cursor.fetchone()
+
+			if not u:
 				return None
-			
-			tipo = tupla_sql[7]
+
+			u_id = u["id_usuario"]
+			tipo = u["tipo"]
+
+			data_nasc = str(u["data_nascimento"])
+			if "-" in data_nasc:
+				p = data_nasc.split(" ")[0].split("-")
+				data_nasc = f"{p[2]}/{p[1]}/{p[0]}"
 			if tipo == "SECRETARIO":
-				return Secretario(tupla_sql[0], tupla_sql[1], tupla_sql[2], tupla_sql[3], tupla_sql[4], tupla_sql[5], tupla_sql[6], tupla_sql[7], tupla_sql[8], tupla_sql[9], tupla_sql[11], tupla_sql[12])
+				cursor.execute("SELECT id_municipio, departamento FROM secretario WHERE id_usuario = ?", (u_id,))
+				s = cursor.fetchone()
+				from src.models.secretario import Secretario
+				mun = self.buscar_municipio_por_id(s["id_municipio"]) if s else None
+				return Secretario(u_id, u["nome"], u["cpf"], u["email"], u["senha"], u["telefone"], data_nasc, mun, s["departamento"])
 			elif tipo == "GESTOR":
-				return Gestor(tupla_sql[0], tupla_sql[1], tupla_sql[2], tupla_sql[3], tupla_sql[4], tupla_sql[5], tupla_sql[6], tupla_sql[7], tupla_sql[8], tupla_sql[9], tupla_sql[14])
+				cursor.execute("SELECT id_escola FROM gestor WHERE id_usuario = ?", (u_id,))
+				g = cursor.fetchone()
+				from src.models.gestor import Gestor
+				esc = self.buscar_escola_por_id(g["id_escola"]) if g else None
+				return Gestor(u_id, u["nome"], u["cpf"], u["email"], u["senha"], u["telefone"], data_nasc, esc)
 			elif tipo == "PROFESSOR":
-				return Professor(tupla_sql[0], tupla_sql[1], tupla_sql[2], tupla_sql[3], tupla_sql[4], tupla_sql[5], tupla_sql[6], tupla_sql[7], tupla_sql[8], tupla_sql[9], tupla_sql[16], tupla_sql[17], tupla_sql[18], tupla_sql[19], tupla_sql[20])
+				cursor.execute("SELECT * FROM professor WHERE id_usuario = ?", (u_id,))
+				p = cursor.fetchone()
+				from src.models.professor import Professor
+				esc = self.buscar_escola_por_id(p["id_escola"]) if p else None
+				return Professor(
+					u_id,
+					u["nome"],
+					u["cpf"],
+					u["email"],
+					u["senha"],
+					u["telefone"],
+					data_nasc,
+					p["registro_funcional"],
+					esc,
+					p["titulacao"],
+					p["area_atuacao"],
+					p["salario"]
+				)
 			elif tipo == "ALUNO":
-				return Aluno(tupla_sql[0], tupla_sql[1], tupla_sql[2], tupla_sql[3], tupla_sql[4], tupla_sql[5], tupla_sql[6], tupla_sql[7], tupla_sql[8], tupla_sql[9], tupla_sql[22], tupla_sql[23])
-			
+				cursor.execute("SELECT id_turma, matricula FROM aluno WHERE id_usuario = ?", (u_id,))
+				a = cursor.fetchone()
+				from src.models.aluno import Aluno
+				tur = self.buscar_turma_por_id(a["id_turma"]) if a else None
+				return Aluno(u_id, u["nome"], u["cpf"], u["email"], u["senha"], u["telefone"], data_nasc, tur, a["matricula"])
+
 			return None
 		except Exception as e:
-			print(f"❌ Erro no banco: {e}")
-			raise ValueError("Erro ao buscar usuário por CPF no banco de dados.")
+			print(f"❌ Erro ao reconstruir objeto {tipo if 'tipo' in locals() else 'Usuario'}: {e}")
+			return None
+		finally:
+			self.connect.row_factory = None
+
 
 	def buscar_municipio_por_id(self, id_busca):
 		try:
