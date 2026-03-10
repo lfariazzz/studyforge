@@ -2,6 +2,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
+from rich.prompt import Prompt
 from typing import Optional
 
 # Imports do seu projeto
@@ -15,122 +16,122 @@ repo = RepositorioGeral()
 
 # --- AUXILIARES ---
 
-def get_session_secretario() -> Secretario:
-    """Recupera o secretário logado e valida o acesso."""
-    user = auth_system.get_usuario_logado()
-    if not isinstance(user, Secretario):
-        console.print("[bold red]❌ Acesso Negado: Comando exclusivo para Secretários.[/bold red]")
-        raise typer.Exit(1)
-    return user
-
 def exibir_cabecalho(sec: Secretario):
     """Exibe um painel visual no topo do menu."""
     console.clear()
+    # Uso seguro do atributo via property ou getattr
     mun_nome = sec.municipio_responsavel.nome if sec.municipio_responsavel else "N/A"
+    
     console.print(Panel(
         f"[bold blue]STUDYFORGE - PAINEL DO SECRETÁRIO[/bold blue]\n"
         f"[cyan]Usuário:[/cyan] {sec.nome} | [cyan]Município:[/cyan] {mun_nome} | [cyan]Depto:[/cyan] {sec.departamento}",
-        expand=False
+        expand=False,
+        border_style="blue"
     ))
 
-# --- COMANDOS TYPER (@app.command) ---
+# --- FUNÇÕES DE AÇÃO (Baseadas no modelo de Gestor/Aluno) ---
 
-@app.command()
-def perfil():
-    """Exibe o perfil completo do Secretário logado."""
-    sec = get_session_secretario()
-    console.print(Panel(sec.exibir_perfil(), title="Meu Perfil", border_style="green"))
-    if not typer.Context.resilient_parsing: # Evita travar se for chamado via menu
-        typer.pause()
+def comando_perfil(sec: Secretario):
+    """Exibe o perfil completo do Secretário."""
+    console.clear()
+    try:
+        # Imprime o perfil
+        console.print(sec.exibir_perfil())
+    except Exception as e:
+        console.print(f"[red]Erro ao carregar perfil: {e}[/red]")
+    
+    # Força o Typer a parar tudo e esperar uma tecla
+    print("\n")
+    typer.pause(info="Pressione qualquer tecla para voltar ao menu...")
 
-@app.command()
-def estatisticas_rede():
-    """Gera relatório de todas as escolas do município."""
-    sec = get_session_secretario()
+def comando_estatisticas(sec: Secretario):
+    """Relatório da rede municipal."""
+    console.clear()
     with console.status("[bold green]Buscando dados da rede..."):
-        escolas = repo.buscar_escolas_por_municipio(sec.municipio_responsavel.id_municipio)
-        relatorio = sec.ver_estatisticas(escolas)
+        try:
+            # Busca as escolas vinculadas ao ID do município do secretário
+            escolas = repo.buscar_escolas_por_municipio(sec.municipio_responsavel.id_municipio)
+            relatorio = sec.ver_estatisticas(escolas)
+            console.print(Panel(relatorio, title="📊 Relatório de Rede", border_style="cyan"))
+        except Exception as e:
+            console.print(f"[red]Erro ao gerar estatísticas: {e}[/red]")
     
-    console.print(f"\n[bold cyan]📊 RELATÓRIO DE REDE[/bold cyan]")
-    console.print(relatorio)
-    typer.pause()
+    input("\nPressione [Enter] para voltar ao menu...")
 
-@app.command()
-def comunicado_global(
-    titulo: str = typer.Option(..., prompt="Título do Comunicado"),
-    conteudo: str = typer.Option(..., prompt="Conteúdo da Mensagem")
-):
-    """Envia um comunicado para TODAS as escolas do município."""
-    sec = get_session_secretario()
-    # Sincroniza escolas para a lógica de negócio
-    sec.municipio_responsavel.escolas_situadas = repo.buscar_escolas_por_municipio(sec.municipio_responsavel.id_municipio)
+def comando_comunicado(sec: Secretario):
+    """Envia comunicado para todas as escolas."""
+    console.print("\n[bold]Novo Comunicado Global[/bold]")
+    titulo = Prompt.ask("Título")
+    conteudo = Prompt.ask("Conteúdo")
     
-    resultado = sec.enviar_mensagem(titulo, conteudo)
-    console.print(f"[bold blue]ℹ️ {resultado}[/bold blue]")
-    typer.pause()
-
-@app.command()
-def gerenciar_pagamento(
-    escola_id: int = typer.Option(..., prompt="ID da Escola"),
-    demanda_id: str = typer.Option(..., prompt="ID da Demanda")
-):
-    """Aprova e paga uma demanda financeira de uma escola."""
-    sec = get_session_secretario()
-    escola = repo.buscar_escola_por_id(escola_id)
+    with console.status("[bold blue]Enviando..."):
+        try:
+            # Sincroniza escolas antes de enviar
+            sec.municipio_responsavel.escolas_situadas = repo.buscar_escolas_por_municipio(sec.municipio_responsavel.id_municipio)
+            resultado = sec.enviar_mensagem(titulo, conteudo)
+            console.print(f"\n[bold green]✅ {resultado}[/bold green]")
+        except Exception as e:
+            console.print(f"[red]Erro ao enviar: {e}[/red]")
     
-    if not escola:
-        console.print("[red]❌ Escola não encontrada.[/red]")
-        return
+    input("\nPressione [Enter] para continuar...")
 
-    console.print(f"\n[yellow]--- Analisando demanda {demanda_id} ---[/yellow]")
-    aviso_aprovacao = sec.administrar_solicitacoes(escola, demanda_id, "APROVAR")
-    console.print(f"[blue]{aviso_aprovacao}[/blue]")
+def comando_pagamento(sec: Secretario):
+    """Aprova e paga demandas."""
+    console.clear()
+    escola_id = Prompt.ask("Digite o ID da Escola")
+    demanda_id = Prompt.ask("Digite o ID da Demanda")
 
-    if "aprovada" in aviso_aprovacao.lower():
-        confirmacao = sec.gerenciar_verba(escola, demanda_id)
-        # Sincroniza com o Banco
-        repo.atualizar_saldos(sec.municipio_responsavel, escola)
-        repo.atualizar_status_demanda(demanda_id, "CONCLUIDA / PAGA")
-        console.print(f"[bold yellow]💰 {confirmacao}[/bold yellow]")
+    try:
+        escola = repo.buscar_escola_por_id(int(escola_id))
+        if not escola:
+            console.print("[red]❌ Escola não encontrada.[/red]")
+        else:
+            console.print(f"\n[yellow]Analisando demanda...[/yellow]")
+            aviso = sec.administrar_solicitacoes(escola, demanda_id, "APROVAR")
+            console.print(f"[blue]{aviso}[/blue]")
+
+            if "aprovada" in aviso.lower():
+                confirmacao = sec.gerenciar_verba(escola, demanda_id)
+                # Persistência no Banco
+                repo.atualizar_saldos(sec.municipio_responsavel, escola)
+                repo.atualizar_status_demanda(demanda_id, "CONCLUIDA / PAGA")
+                console.print(f"[bold yellow]💰 {confirmacao}[/bold yellow]")
+    except Exception as e:
+        console.print(f"[red]Erro no processamento: {e}[/red]")
     
-    typer.pause()
+    input("\nPressione [Enter] para continuar...")
 
-# --- MENU INTERATIVO (O Loop que você queria) ---
+# --- MENU INTERATIVO ---
 
 def menu_interativo_secretario(sec: Secretario):
-    """Loop principal de navegação interativa."""
+    """Loop principal de navegação."""
     while True:
         exibir_cabecalho(sec)
         
         table = Table(show_header=False, box=None)
-        table.add_row("1", "👤 Ver Meu Perfil")
-        table.add_row("2", "📊 Estatísticas da Rede")
-        table.add_row("3", "📢 Enviar Comunicado Global")
-        table.add_row("4", "💸 Gerenciar Pagamentos/Demandas")
-        table.add_row("0", "🚪 Logout e Sair")
+        table.add_row("[1]", "👤 Ver Meu Perfil")
+        table.add_row("[2]", "📊 Estatísticas da Rede")
+        table.add_row("[3]", "📢 Enviar Comunicado Global")
+        table.add_row("[4]", "💸 Gerenciar Pagamentos")
+        table.add_row("[0]", "🚪 Logout e Sair")
         
         console.print(table)
-        opcao = typer.prompt("\nEscolha uma ação", default="0")
+        
+        # Usando o prompt padrão do Typer que é mais limpo para esse caso
+        opcao = typer.prompt("\nEscolha uma opção", default="0")
 
         if opcao == "1":
-            perfil()
+            comando_perfil(sec)
         elif opcao == "2":
-            estatisticas_rede()
+            comando_estatisticas(sec)
         elif opcao == "3":
-            comunicado_global()
+            comando_comunicado(sec)
         elif opcao == "4":
-            gerenciar_pagamento()
+            comando_pagamento(sec)
         elif opcao == "0":
             console.print("[bold red]Encerrando sessão...[/bold red]")
             auth_system.fazer_logout()
             break
         else:
-            console.print("[red]Opção inválida![/red]")
+            console.print("[yellow]Opção inválida.[/yellow]")
             typer.pause()
-
-@app.callback(invoke_without_command=True)
-def main(ctx: typer.Context):
-    """Entrada padrão para o comando 'secretario'"""
-    if ctx.invoked_subcommand is None:
-        sec = get_session_secretario()
-        menu_interativo_secretario(sec)

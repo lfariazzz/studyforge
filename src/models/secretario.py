@@ -101,19 +101,15 @@ class Secretario(Usuario):
             str: String formatada contendo informacoes do perfil do secretario.
         """
         nome_municipio = self.municipio_responsavel.nome if hasattr(self.municipio_responsavel, 'nome') else "Não informado"
-        status_conta = "Ativa" if self._status else "Inativa/Suspensa"
-
+        
         return (
-            f"\n" + "="*40 + "\n"
-            f"          PERFIL DO SECRETÁRIO\n"
-            f"="*40 + "\n"
             f"Nome: {self.nome}\n"
-            f"ID Identificador: {self.id_usuario}\n"
+            f"CPF: {self.cpf}\n"
+            f"ID Usuário: {self.id_usuario}\n"
+            f"E-mail: {self.email}\n"
             f"Município: {nome_municipio}\n"
             f"Departamento: {self.departamento}\n"
-            f"E-mail: {self.email}\n"
-            f"Status: {status_conta}\n"
-            f"="*40
+            f"Status: {'Ativo' if self._status else 'Inativo'}"
         )
 
     def ver_estatisticas(self, lista_escola):
