@@ -6,6 +6,7 @@ class Frequencia:
 
         self._id_frequencia = id_frequencia
         self._id_aluno = id_aluno 
+        self._aluno = aluno
         self._id_diario = id_diario
         self.status = status.upper()
 

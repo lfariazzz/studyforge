@@ -13,6 +13,7 @@ class Diario:
         self.__id_turma = id_turma
         self.disciplina = disciplina
         self.__id_professor = id_professor
+        self._professor = professor
         self.conteudo = conteudo 
 
         # Garante que a data seja um objeto datetime
