@@ -15,7 +15,7 @@ class Escola:
 
     Atributos:
         _nome (str): Nome da escola.
-        _endereco (str): Endereço da escola.
+        _id_endereco (str): Endereço da escola.
         _id_escola (int): Identificador único da escola.
         _gestor_atual (Gestor): Gestor responsável pela escola.
         _verba_disponivel_escola (float): Verba atualmente disponível.
@@ -24,9 +24,9 @@ class Escola:
         _turmas_existentes (list[Turma]): Lista de turmas cadastradas.
         _professores_empregados (list): Lista de professores vinculados."""
     
-    def __init__(self, nome, endereco, id_escola, gestor_atual, verba_disponivel_escola, id_municipio, capacidade_infraestrutura, municipio=None):
+    def __init__(self, nome, id_endereco, id_escola, gestor_atual, verba_disponivel_escola, id_municipio, capacidade_infraestrutura, municipio=None):
         self._nome = nome
-        self._endereco = endereco
+        self._id_endereco = id_endereco
         self._id_escola = id_escola
         self._gestor_atual = gestor_atual # espera a intancia da classe Gestor
         self._verba_disponivel_escola = float(verba_disponivel_escola)
@@ -46,7 +46,7 @@ class Escola:
     @property
     def endereco(self):
         """Retorna o objeto Endereço da escola."""
-        return self._endereco
+        return self._id_endereco
     
     @property
     def id_escola(self):
@@ -180,7 +180,7 @@ class Escola:
         """Converte os dados da escola em dicionário."""
         return {
             "nome" : self._nome,
-            "id_localizacao": self._endereco._id_endereco if self._endereco else None,
+            "id_localizacao": self._id_endereco if self._id_endereco else None,
             "id_escola" : self._id_escola,
             "id_gestor": self._gestor_atual._id_usuario if self._gestor_atual else None,
             "verba_disponivel_escola" : self._verba_disponivel_escola,

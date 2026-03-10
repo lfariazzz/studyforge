@@ -43,7 +43,7 @@ class RepositorioGeral:
 	"id_municipio"	INTEGER PRIMARY KEY AUTOINCREMENT,
 	"estado"	TEXT NOT NULL CHECK(length("estado") = 2),
 	"verba_disponivel_municipio"	REAL DEFAULT 0.0,
-	"nota_de_corte" REAL DEFAULT 7.0,
+	"nota_de_corte" REAL DEFAULT 7.0
     );
                          
     CREATE TABLE IF NOT EXISTS gestor(
@@ -55,7 +55,7 @@ class RepositorioGeral:
                          
     CREATE TABLE IF NOT EXISTS escola(
 	"nome"	TEXT NOT NULL,
-	"id_localizacao" INTEGER, -- referencia endereco na classe,
+	"id_localizacao" INTEGER, -- referencia id_endereco na classe,
 	"id_escola"	INTEGER PRIMARY KEY AUTOINCREMENT,
 	"id_gestor"	INTEGER, -- referencia gestor_atual na classe
 	"verba_disponivel_escola"	REAL DEFAULT 0.0,
@@ -63,7 +63,7 @@ class RepositorioGeral:
     "capacidade_infraestrutura" 	INTEGER DEFAULT 500,     
 	FOREIGN KEY("id_gestor") REFERENCES "gestor"("id_usuario"),
 	FOREIGN KEY("id_municipio") REFERENCES "municipio"("id_municipio"),
-    FOREIGN KEY("id_localizacao") REFERENCES "escola_endereco"("id_localizacao")
+    FOREIGN KEY("id_localizacao") REFERENCES "escola_id_endereco"("id_localizacao")
     );
                          
     CREATE TABLE IF NOT EXISTS escola_endereco(
@@ -258,13 +258,13 @@ class RepositorioGeral:
 			codigo_SQL = ('''INSERT INTO escola(nome, id_localizacao, id_escola, id_gestor, verba_disponivel_escola, id_municipio, capacidade_infraestrutura) VALUES (:nome, :id_localizacao, :id_escola, :id_gestor, :verba_disponivel_escola, :id_municipio, :capacidade_infraestrutura)''')
 			self.cursor.execute(codigo_SQL, dados)
 			escola_obj._id_escola = self.cursor.lastrowid
-			if escola_obj._endereco:
+			if escola_obj._id_endereco:
 				dados_endereco = escola_obj._endereco.to_dict()
 				dados_endereco["id_escola"] = escola_obj._id_endereco
 				dados_endereco["id_localizacao"] = 1
 				sql_endereco = ('''INSERT INTO escola_endereco(id_escola, id_localizacao, cep, rua, numero, bairro) VALUES (:id_escola, :id_localizacao, :cep, :rua, :numero, :bairro)''')
 				self.cursor.execute(sql_endereco, dados_endereco)
-				escola_obj._endereco._id_localizacao = 1
+				escola_obj._id_endereco._id_localizacao = 1
 			self.connect.commit()
 		except Exception as e:
 			self.connect.rollback()
@@ -343,22 +343,30 @@ class RepositorioGeral:
 	""""Métodos responsáveis por ler os dados do sistema no banco de dados SQLite e transformar em objetos novamente."""
 	def buscar_usuario_por_cpf(self, cpf_busca):
 		try:
-			busca_tupla_sql = ('''SELECT * FROM usuario WHERE cpf = (:cpf)''')
+			busca_tupla_sql = ('''
+				SELECT * FROM usuario 
+                LEFT JOIN secretario ON usuario.id_usuario = secretario.id_usuario
+                LEFT JOIN gestor ON usuario.id_usuario = gestor.id_usuario
+                LEFT JOIN professor ON usuario.id_usuario = professor.id_usuario
+                LEFT JOIN aluno ON usuario.id_usuario = aluno.id_usuario
+                WHERE usuario.cpf = (:cpf)
+			''')
 			self.cursor.execute(busca_tupla_sql, {"cpf": cpf_busca})
 			tupla_sql = self.cursor.fetchone()
-			usuario_obj = None
-			if tupla_sql:
-				tipo = tupla_sql[9]
-				agrs = (tupla_sql[0], tupla_sql[2], tupla_sql[1], tupla_sql[3], tupla_sql[4], tupla_sql[5], tupla_sql[6], tupla_sql[9], tupla_sql[7], tupla_sql[8])
-				if tipo == "SECRETARIO":
-					usuario_obj = Secretario(*agrs)
-				elif tipo == "GESTOR":
-					usuario_obj = Gestor(*agrs)
-				elif tipo == "PROFESSOR":
-					usuario_obj = Professor(*agrs)
-				elif tipo == "ALUNO":
-					usuario_obj = Aluno(*agrs)
-			return usuario_obj
+			if not tupla_sql:
+				return None
+			
+			tipo = tupla_sql[7]
+			if tipo == "SECRETARIO":
+				return Secretario(tupla_sql[0], tupla_sql[1], tupla_sql[2], tupla_sql[3], tupla_sql[4], tupla_sql[5], tupla_sql[6], tupla_sql[7], tupla_sql[8], tupla_sql[9], tupla_sql[11], tupla_sql[12])
+			elif tipo == "GESTOR":
+				return Gestor(tupla_sql[0], tupla_sql[1], tupla_sql[2], tupla_sql[3], tupla_sql[4], tupla_sql[5], tupla_sql[6], tupla_sql[7], tupla_sql[8], tupla_sql[9], tupla_sql[14])
+			elif tipo == "PROFESSOR":
+				return Professor(tupla_sql[0], tupla_sql[1], tupla_sql[2], tupla_sql[3], tupla_sql[4], tupla_sql[5], tupla_sql[6], tupla_sql[7], tupla_sql[8], tupla_sql[9], tupla_sql[16], tupla_sql[17], tupla_sql[18], tupla_sql[19], tupla_sql[20])
+			elif tipo == "ALUNO":
+				return Aluno(tupla_sql[0], tupla_sql[1], tupla_sql[2], tupla_sql[3], tupla_sql[4], tupla_sql[5], tupla_sql[6], tupla_sql[7], tupla_sql[8], tupla_sql[9], tupla_sql[22], tupla_sql[23])
+			
+			return None
 		except Exception as e:
 			print(f"❌ Erro no banco: {e}")
 			raise ValueError("Erro ao buscar usuário por CPF no banco de dados.")
