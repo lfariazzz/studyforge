@@ -316,7 +316,7 @@ class Aluno(Usuario):
         """
         return{
             "id_usuario": self._id_usuario,
+            "id_turma": self._turma_associada._id_turma if self._turma_associada else None,
             "matricula": self._id_matricula,
-            "id_turma": self._turma_associada._id_turma if self._turma_associada else None
         }
     

@@ -432,6 +432,7 @@ class Secretario(Usuario):
         """
         return{
             "id_usuario": self._id_usuario,
+            "id_municipio": self.municipio_responsavel.id_municipio if self.municipio_responsavel else None,
             "departamento": self._departamento,
-            "id_municipio": self.municipio_responsavel.id_municipio if self.municipio_responsavel else None
+            
         }

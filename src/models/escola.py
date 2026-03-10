@@ -24,7 +24,7 @@ class Escola:
         _turmas_existentes (list[Turma]): Lista de turmas cadastradas.
         _professores_empregados (list): Lista de professores vinculados."""
     
-    def __init__(self, nome, endereco, id_escola, gestor_atual, verba_disponivel_escola, id_municipio, municipio, capacidade_infraestrutura=500):
+    def __init__(self, nome, endereco, id_escola, gestor_atual, verba_disponivel_escola, id_municipio, capacidade_infraestrutura, municipio=None):
         self._nome = nome
         self._endereco = endereco
         self._id_escola = id_escola
@@ -179,13 +179,13 @@ class Escola:
     def to_dict(self):
         """Converte os dados da escola em dicionário."""
         return {
-            "id_escola" : self._id_escola,
             "nome" : self._nome,
-            "verba_disponivel_escola" : self._verba_disponivel_escola,
-            "capacidade_infraestrutura": self._capacidade_infraestrutura,
-            "id_municipio" : self._id_municipio,
+            "id_localizacao": self._endereco._id_endereco if self._endereco else None,
+            "id_escola" : self._id_escola,
             "id_gestor": self._gestor_atual._id_usuario if self._gestor_atual else None,
-            "id_localizacao": self._endereco._id_endereco if self._endereco else None
+            "verba_disponivel_escola" : self._verba_disponivel_escola,
+            "id_municipio" : self._id_municipio,
+            "capacidade_infraestrutura": self._capacidade_infraestrutura,
         }
 
     def __str__(self):

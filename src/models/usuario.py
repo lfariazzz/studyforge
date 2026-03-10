@@ -262,13 +262,13 @@ class Usuario(ABC):
         """
         return {
             "id_usuario": self._id_usuario, 
-            "cpf": self._cpf,
             "nome": self._nome,
+            "cpf": self._cpf,
             "email": self._email,
             "senha": self._senha,
             "telefone": self._telefone,
             "data_nascimento": self._data_nascimento,
+            "tipo": self.__class__.__name__.upper(),
             "login": int(self._login),        
             "status": int(self._status),
-            "tipo": self.__class__.__name__.upper(),
         }
