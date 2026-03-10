@@ -1,7 +1,7 @@
 from datetime import datetime
 
 class Diario:
-    def __init__(self, id_diario, disciplina, data, conteudo, id_professor, id_turma):
+    def __init__(self, id_diario, disciplina, data, conteudo, id_professor, id_turma, professor=None):
         """
         Representa uma aula realizada.
         :param id_diario: (int) Identificador único da aula.

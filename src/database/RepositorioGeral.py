@@ -711,5 +711,3 @@ class RepositorioGeral:
 		except Exception as e:
 			print(f"❌ Erro no banco: {e}")
 			raise ValueError("Erro ao listar frequência por diário no banco de dados.")
-	
-	def buscar_
