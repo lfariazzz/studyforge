@@ -33,7 +33,7 @@ class RepositorioGeral:
 	"senha"	TEXT NOT NULL,
 	"telefone"	TEXT NOT NULL CHECK(length("telefone") = 10 OR length("telefone") = 11),
 	"data_nascimento"	TEXT NOT NULL,
-	"tipo"	TEXT CHECK("tipo" IN ('SECRETARIO', 'GESTOR', 'PROFESSOR', 'ALUNO'))
+	"tipo"	TEXT CHECK("tipo" IN ('SECRETARIO', 'GESTOR', 'PROFESSOR', 'ALUNO')),
     "login"	INTEGER DEFAULT 0,
 	"status"	INTEGER  DEFAULT 1,
     ); 
@@ -43,7 +43,7 @@ class RepositorioGeral:
 	"id_municipio"	INTEGER PRIMARY KEY AUTOINCREMENT,
 	"estado"	TEXT NOT NULL CHECK(length("estado") = 2),
 	"verba_disponivel_municipio"	REAL DEFAULT 0.0,
-	"nota_de_corte" REAL DEFAULT 7.0,
+	"nota_de_corte" REAL DEFAULT 7.0
     );
                          
     CREATE TABLE IF NOT EXISTS gestor(
