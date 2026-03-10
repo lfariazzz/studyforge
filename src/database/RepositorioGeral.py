@@ -35,7 +35,7 @@ class RepositorioGeral:
 	"data_nascimento"	TEXT NOT NULL,
 	"tipo"	TEXT CHECK("tipo" IN ('SECRETARIO', 'GESTOR', 'PROFESSOR', 'ALUNO')),
     "login"	INTEGER DEFAULT 0,
-	"status"	INTEGER  DEFAULT 1,
+	"status"	INTEGER  DEFAULT 1
     ); 
                          
     CREATE TABLE IF NOT EXISTS municipio(
@@ -152,14 +152,13 @@ class RepositorioGeral:
     );
                          
     CREATE TABLE IF NOT EXISTS nota(
-	"id_nota"	INTEGER,
+	"id_nota"	INTEGER PRIMARY KEY AUTOINCREMENT,
 	"id_aluno"	INTEGER,
 	"id_turma"	INTEGER,
 	"disciplina"	TEXT NOT NULL,
 	"valor"	REAL NOT NULL CHECK("valor" >= 0 AND "valor" <= 10),
 	"data"	TEXT NOT NULL,
 	"tipo"	TEXT NOT NULL,
-	PRIMARY KEY("id_nota" AUTOINCREMENT),
 	FOREIGN KEY("id_aluno") REFERENCES "aluno"("id_usuario") ON DELETE RESTRICT,
 	FOREIGN KEY("id_turma") REFERENCES "turma"("id_turma")
     );
@@ -176,22 +175,20 @@ class RepositorioGeral:
     );
                          
     CREATE TABLE IF NOT EXISTS frequencia(
-	"id_frequencia"	INTEGER,
+	"id_frequencia"	INTEGER PRIMARY KEY AUTOINCREMENT,
 	"status"	TEXT NOT NULL CHECK("status" IN ('PRESENTE', 'AUSENTE')),
 	"id_aluno"	INTEGER,
 	"id_diario"	INTEGER,
-	PRIMARY KEY("id_frequencia" AUTOINCREMENT),
 	FOREIGN KEY("id_aluno") REFERENCES "aluno"("id_usuario") ON DELETE RESTRICT,
 	FOREIGN KEY("id_diario") REFERENCES "diario"("id_diario") ON DELETE CASCADE
     );
                          
     CREATE TABLE IF NOT EXISTS configuracoes(
-	"id_config"	INTEGER,
+	"id_config"	INTEGER PRIMARY KEY AUTOINCREMENT,
 	"frequencia_minima"	REAL DEFAULT 0.75 CHECK("frequencia_minima" >= 0 AND "frequencia_minima" <= 1),
 	"indice_lacuna_maximo"	REAL DEFAULT 0.3 CHECK("indice_lacuna_maximo" >= 0 AND "indice_lacuna_maximo" <= 1),
 	"limite_custo_demanda"	REAL DEFAULT 15000.0 CHECK("limite_custo_demanda" >= 0),
 	"id_municipio"	INTEGER UNIQUE, -- referencia municipio na classe
-	PRIMARY KEY("id_config" AUTOINCREMENT),
 	FOREIGN KEY("id_municipio") REFERENCES "municipio"("id_municipio")
     );
                          
