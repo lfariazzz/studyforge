@@ -27,20 +27,20 @@ class RepositorioGeral:
 		codigo_SQL = ('''
     CREATE TABLE IF NOT EXISTS usuario(
 	"id_usuario"	INTEGER PRIMARY KEY AUTOINCREMENT,
-	"cpf"	TEXT NOT NULL UNIQUE,
 	"nome"	TEXT NOT NULL,
+	"cpf"	TEXT NOT NULL UNIQUE,
 	"email"	TEXT NOT NULL UNIQUE,
 	"senha"	TEXT NOT NULL,
 	"telefone"	TEXT NOT NULL CHECK(length("telefone") = 10 OR length("telefone") = 11),
 	"data_nascimento"	TEXT NOT NULL,
+	"tipo"	TEXT CHECK("tipo" IN ('SECRETARIO', 'GESTOR', 'PROFESSOR', 'ALUNO'))
     "login"	INTEGER DEFAULT 0,
 	"status"	INTEGER  DEFAULT 1,
-	"tipo"	TEXT CHECK("tipo" IN ('SECRETARIO', 'GESTOR', 'PROFESSOR', 'ALUNO'))
     ); 
                          
     CREATE TABLE IF NOT EXISTS municipio(
-	"id_municipio"	INTEGER,
 	"nome"	TEXT NOT NULL,
+	"id_municipio"	INTEGER,
 	"estado"	TEXT NOT NULL CHECK(length("estado") = 2),
 	"verba_disponivel_municipio"	REAL DEFAULT 0.0,
 	"nota_de_corte" REAL DEFAULT 7.0,
@@ -55,13 +55,13 @@ class RepositorioGeral:
 	);
                          
     CREATE TABLE IF NOT EXISTS escola(
-	"id_escola"	INTEGER PRIMARY KEY AUTOINCREMENT,
 	"nome"	TEXT NOT NULL,
-	"verba_disponivel_escola"	REAL DEFAULT 0.0,
-    "capacidade_infraestrutura" 	INTEGER DEFAULT 500,     
-	"id_municipio"	INTEGER, -- referencia municipio na classe
+	"id_localizacao" INTEGER, -- referencia endereco na classe,
+	"id_escola"	INTEGER PRIMARY KEY AUTOINCREMENT,
 	"id_gestor"	INTEGER, -- referencia gestor_atual na classe
-    "id_localizacao" INTEGER, -- referencia endereco na classe
+	"verba_disponivel_escola"	REAL DEFAULT 0.0,
+	"id_municipio"	INTEGER, -- referencia municipio na classe
+    "capacidade_infraestrutura" 	INTEGER DEFAULT 500,     
 	FOREIGN KEY("id_gestor") REFERENCES "gestor"("id_usuario"),
 	FOREIGN KEY("id_municipio") REFERENCES "municipio"("id_municipio"),
     FOREIGN KEY("id_localizacao") REFERENCES "escola_endereco"("id_localizacao")
@@ -82,17 +82,17 @@ class RepositorioGeral:
 	"id_turma"	INTEGER,
 	"nome"	TEXT NOT NULL,
 	"ano_letivo"	INTEGER NOT NULL,
+	"id_escola"	INTEGER,
 	"turno"	TEXT NOT NULL CHECK("turno" IN ('MANHÃ', 'TARDE', 'NOITE', 'INTEGRAL')),
 	"capacidade_maxima"	INTEGER NOT NULL,
-	"id_escola"	INTEGER,
 	PRIMARY KEY("id_turma" AUTOINCREMENT),
 	FOREIGN KEY("id_escola") REFERENCES "escola"("id_escola") ON DELETE RESTRICT
     );
                          
     CREATE TABLE IF NOT EXISTS secretario(
 	"id_usuario"	INTEGER,
-	"departamento"	TEXT NOT NULL,
 	"id_municipio"	INTEGER, -- Referencia municipio_responsável no init da classe
+	"departamento"	TEXT NOT NULL,
 	PRIMARY KEY("id_usuario"),
 	FOREIGN KEY("id_municipio") REFERENCES "municipio"("id_municipio"),
 	FOREIGN KEY("id_usuario") REFERENCES "usuario"("id_usuario") ON DELETE CASCADE
@@ -100,19 +100,19 @@ class RepositorioGeral:
                          
     CREATE TABLE IF NOT EXISTS professor(
 	"id_usuario"	INTEGER PRIMARY KEY,
-	"salario"	REAL NOT NULL CHECK("salario" > 0),
+	"registro_funcional"	TEXT NOT NULL UNIQUE,
+	"id_escola" INTEGER, -- referencia escola_associada no init da classe
 	"titulacao"	TEXT NOT NULL,
 	"area_atuacao"	TEXT NOT NULL,
-	"registro_funcional"	TEXT NOT NULL UNIQUE,
-    "id_escola" INTEGER,
+	"salario"	REAL NOT NULL CHECK("salario" > 0),
 	FOREIGN KEY("id_usuario") REFERENCES "usuario"("id_usuario") ON DELETE CASCADE,
     FOREIGN KEY("id_escola") REFERENCES "escola"("id_escola")
     );
                          
     CREATE TABLE IF NOT EXISTS aluno(
 	"id_usuario"	INTEGER PRIMARY KEY,
+	"id_turma"	INTEGER, -- Referencia turma_associada na classe,
 	"matricula"	TEXT NOT NULL UNIQUE,
-	"id_turma"	INTEGER, -- Referencia turma_associada na classe
 	FOREIGN KEY("id_turma") REFERENCES "turma"("id_turma") ON DELETE RESTRICT,
 	FOREIGN KEY("id_usuario") REFERENCES "usuario"("id_usuario") ON DELETE CASCADE
     );
@@ -120,15 +120,15 @@ class RepositorioGeral:
     CREATE TABLE IF NOT EXISTS demanda(
 	"id_demanda"	INTEGER PRIMARY KEY AUTOINCREMENT,
 	"descricao"	TEXT NOT NULL,
-	"status"	TEXT DEFAULT 'PENDENTE' CHECK("status" IN ('PENDENTE', 'APROVADO', 'RECUSADO', 'EM_EXECUCAO', 'CONCLUIDO')),
 	"prioridade"	TEXT NOT NULL CHECK("prioridade" IN ('BAIXA', 'MEDIA', 'ALTA', 'URGENTE')),
-	"id_solicitante"	INTEGER, -- Referencia solicitante na classe
-	"id_municipio"	INTEGER, -- Referencia municipio_responsavel na classe
-    "tipo" TEXT CHECK("tipo" IN('INFRAESTRUTURA', 'PEDAGOGICA')),
+	"id_solicitante"	INTEGER, -- Referencia solicitante na classe,
+	"id_municipio"	INTEGER, -- Referencia municipio_responsavel na classe,
+	"tipo" TEXT CHECK("tipo" IN('INFRAESTRUTURA', 'PEDAGOGICA')),
+	"status"	TEXT DEFAULT 'PENDENTE' CHECK("status" IN ('PENDENTE', 'APROVADO', 'RECUSADO', 'EM_EXECUCAO', 'CONCLUIDO')),
     "data_criacao" TEXT NOT NULL, -- referencia criado_em na classe
 	"ultimo_editor" TEXT, -- referencia alterado_por na classe
     "data_alteracao" TEXT,  
-    "alerta_auditoria" TEXT, 
+    "alerta_auditoria" TEXT, -- referencia alerta na classe
 	FOREIGN KEY("id_municipio") REFERENCES "municipio"("id_municipio"),
 	FOREIGN KEY("id_solicitante") REFERENCES "usuario"("id_usuario")
     );
@@ -144,12 +144,12 @@ class RepositorioGeral:
                          
     CREATE TABLE IF NOT EXISTS demanda_pedagogica(
 	"id_demanda"	INTEGER PRIMARY KEY,
-	"indice_lacuna"	REAL NOT NULL CHECK("indice_lacuna" >= 0.0 AND "indice_lacuna" <= 1.0),
-	"frequencia_apurada"	REAL NOT NULL CHECK("frequencia_apurada" <= 1.0 AND "frequencia_apurada" >= 0),
 	"id_turma"	INTEGER, -- referencia turma_alvo na classe
+	"frequencia_apurada"	REAL NOT NULL CHECK("frequencia_apurada" <= 1.0 AND "frequencia_apurada" >= 0),
     "disciplina_alvo" TEXT NOT NULL,
     "id_professor" INTEGER, -- referencia professor_responsavel na classe,
-    "qtd_alunos_risco" INTEGER,
+    "relatorio_alunos" INTEGER,
+	"indice_lacuna"	REAL NOT NULL CHECK("indice_lacuna" >= 0.0 AND "indice_lacuna" <= 1.0),
 	FOREIGN KEY("id_demanda") REFERENCES "demanda"("id_demanda"),
 	FOREIGN KEY("id_turma") REFERENCES "turma"("id_turma") ON DELETE RESTRICT,
     FOREIGN KEY("id_professor") REFERENCES "professor"("id_usuario")
@@ -157,12 +157,12 @@ class RepositorioGeral:
                          
     CREATE TABLE IF NOT EXISTS nota(
 	"id_nota"	INTEGER,
+	"id_aluno"	INTEGER,
+	"id_turma"	INTEGER,
 	"disciplina"	TEXT NOT NULL,
 	"valor"	REAL NOT NULL CHECK("valor" >= 0 AND "valor" <= 10),
 	"data"	TEXT NOT NULL,
 	"tipo"	TEXT NOT NULL,
-	"id_aluno"	INTEGER,
-	"id_turma"	INTEGER,
 	PRIMARY KEY("id_nota" AUTOINCREMENT),
 	FOREIGN KEY("id_aluno") REFERENCES "aluno"("id_usuario") ON DELETE RESTRICT,
 	FOREIGN KEY("id_turma") REFERENCES "turma"("id_turma")

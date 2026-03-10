@@ -9,11 +9,11 @@ class DemandaPedagogica(Demanda):
     problemas de frequência e desempenho escolar (lacunas de aprendizado).
     """
 
-    def __init__(self, id_demanda, descricao, prioridade, solicitante, 
-                 turma, frequencia_apurada, municipio_responsavel, disciplina_alvo, professor, relatorio_alunos, indice_lacuna,
-                 status="PENDENTE", criado_em=None, editor=None, data_alteracao=None, alerta=None):
+    def __init__(self, id_demanda, descricao, prioridade, solicitante,  municipio_responsavel,
+                 turma, frequencia_apurada, disciplina_alvo, professor, relatorio_alunos, indice_lacuna,
+                 criado_em=None, editor=None, data_alteracao=None, alerta=None):
         
-        super().__init__(id_demanda, descricao, prioridade, solicitante, municipio_responsavel, "PEDAGÓGICA", status, criado_em, editor, data_alteracao, alerta)
+        super().__init__(id_demanda, descricao, prioridade, solicitante, municipio_responsavel, "PEDAGÓGICA", "PENDENTE", criado_em, editor, data_alteracao, alerta)
 
         # 2. Atributos da Demanda
         self._turma_alvo = turma
@@ -107,10 +107,10 @@ class DemandaPedagogica(Demanda):
     def to_dict_especifico(self):
         return{
             "id_demanda": self._id_demanda,
-            "indice_lacuna": self._indice_lacuna,
-            "frequencia_apurada": self._media_frequencia_apurada,
             "id_turma": self._turma_alvo.id_turma if self._turma_alvo else None,
+            "frequencia_apurada": self._media_frequencia_apurada,
             "disciplina_alvo": self._disciplina_alvo,
             "id_professor": self._professor_responsavel.id_usuario if self._professor_responsavel else None,
-            "qtd_alunos_risco": self._qtd_alunos_em_risco
+            "relatorio_alunos": self._relatorio_alunos,
+            "indice_lacuna": self._indice_lacuna,
         }

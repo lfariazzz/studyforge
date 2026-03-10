@@ -4,18 +4,19 @@ vai se conecta com DemandaPedagogica
 """
 
 class Nota: 
-    def __init__(self, id_nota, id_aluno, aluno, id_turma, disciplina, valor, data, tipo):
+    def __init__(self, id_nota, id_aluno, id_turma, disciplina, valor, data, tipo, aluno=None):
         if not ( 0 <= valor <= 10):
             raise ValueError("Somente valores de 0 a 10 são permitidos para notas.")
         
         self._id_nota = id_nota
         self._id_aluno = id_aluno
-        self._aluno = aluno
         self._id_turma = id_turma 
         self.disciplina = disciplina
         self.valor = float(valor) 
         self.data = data 
         self.tipo = tipo 
+        self._aluno = aluno
+
     
         
     def to_dict(self):
@@ -24,12 +25,12 @@ class Nota:
         """
         return {
             "id_nota": self._id_nota,
+            "id_aluno": self._id_aluno,
+            "id_turma": self._id_turma,
             "disciplina": self.disciplina,
             "valor": self.valor,
             "data": self.data, 
-            "tipo": self.tipo,
-            "id_aluno": self._id_aluno,
-            "id_turma": self._id_turma,
+            "tipo": self.tipo
         }
     
     def __repr__(self):
