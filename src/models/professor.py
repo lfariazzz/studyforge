@@ -125,8 +125,7 @@ class Professor(Usuario):
         if turma not in self.turmas_associadas:
             return "Professor não pertence a esta turma."
         
-        # 2. Instancia o objeto Diario (Cabeçalho da Aula)
-        # Diario(id_diario, id_professor, id_turma, disciplina, data, conteudo)
+        # 1. Instancia o objeto Diario (para persistência futura)
         novo_diario = Diario(
             id_diario=None,
             id_professor=self.id_usuario,
@@ -136,28 +135,38 @@ class Professor(Usuario):
             conteudo=conteudo_aula
         )
 
-        # 3. Cria a lista de objetos Frequencia
+        # 2. Registra na Turma (que usa dicionários internamente)
+        # O método registrar_aula da Turma valida se o professor é regente
+        sucesso_turma = turma.registrar_aula(self, data, conteudo_aula)
+        
+        if not sucesso_turma:
+            return "Erro ao registrar aula no diário da turma."
+
+        # 3. Processa cada aluno na lista de presença
         objetos_frequencia = []
         for registro in lista_presenca:
             aluno = registro.get("aluno")
-            status = "PRESENTE" if registro.get("presenca") else "AUSENTE"
+            status_bool = registro.get("presenca")
+            status_str = "PRESENTE" if status_bool else "AUSENTE"
             
-            # Frequencia(id_frequencia, id_aluno, id_diario, status, data)
+            # Instancia o objeto Frequencia exigido pelo Aluno
             nova_freq = Frequencia(
                 id_frequencia=None,
+                status=status_str,
                 id_aluno=aluno.id_usuario,
-                id_diario=None, # Será vinculado após o save do diário no banco
-                status=status,
-                data=data
+                id_diario=None,
+                aluno=aluno
             )
 
-            # Atualiza o estado em memória do objeto Aluno (opcional, se desejar)
+            # Sincroniza com o objeto Aluno (que agora espera o objeto Frequencia)
             if hasattr(aluno, 'registrar_presenca'):
-                aluno.registrar_presenca(data, registro.get("presenca"))
+                try:
+                    aluno.registrar_presenca(nova_freq)
+                except TypeError as e:
+                    print(f"Erro de compatibilidade no Aluno: {e}")
                 
             objetos_frequencia.append(nova_freq)
 
-        # 4. Retorna a tupla de objetos para o RepositorioGeral salvar
         return novo_diario, objetos_frequencia
 
     def exibir_perfil(self):
@@ -207,9 +216,10 @@ class Professor(Usuario):
         Returns:
             str: Mensagem de sucesso ou erro sobre o lancamento da nota.
         """
-        if aluno not in turma.alunos_matriculados or turma not in self._turmas_associadas:
+        if aluno not in turma.alunos_matriculados or turma not in self.turmas_associadas:
             return "Erro de permissão: Vínculo inválido entre professor, turma ou aluno."
 
+        # 1. Objeto Nota para o Aluno
         nova_nota = Nota(
             id_nota=None,
             id_aluno=aluno.id_usuario,
@@ -221,6 +231,16 @@ class Professor(Usuario):
             aluno=aluno
         )
 
+        # 2. Registro no sistema de dicionários da Turma
+        turma.registrar_nota_no_sistema(
+            aluno=aluno, 
+            disciplina=self.area_atuacao, 
+            valor=valor, 
+            tipo=tipo, 
+            data_prova=data_prova
+        )
+
+        # 3. Registro no objeto Aluno
         if hasattr(aluno, 'adicionar_nota'):
             aluno.adicionar_nota(nova_nota)
         

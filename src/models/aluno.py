@@ -57,6 +57,7 @@ class Aluno(Usuario):
     def turma_associada(self, valor):
         if hasattr(valor, 'id_turma'):
             self._turma_associada = valor
+            # Só chama adicionar_aluno se o aluno ainda não estiver na lista da turma
             if self not in valor.alunos_matriculados:
                 valor.adicionar_aluno(self)
         elif isinstance(valor, str) or valor is None:
@@ -77,18 +78,17 @@ class Aluno(Usuario):
         Calcula a frequência real comparando as presenças com o 
         total de aulas ministradas (registradas nos diários da turma).
         """
-        if not self.turma_associada or not hasattr(self.turma_associada, 'diarios'):
+        if not self.turma_associada or not hasattr(self.turma_associada, '_diario_de_classe'):
             return 100.0
         
         # O total de aulas vem do Diário da Turma
-        total_aulas_ministradas = len(self.turma_associada.diarios)
+        total_aulas_ministradas = len(self.turma_associada._diario_de_classe)
         
         if total_aulas_ministradas == 0:
             return 100.0
 
         # Conta quantos objetos Frequencia têm status "PRESENTE"
-        presencas_confirmadas = sum(1 for f in self.presencas if f.status == "PRESENTE")
-        
+        presencas_confirmadas = sum(1 for f in self._presencas if f.status == "PRESENTE")
         return round((presencas_confirmadas / total_aulas_ministradas) * 100, 2)
         
     # -------
