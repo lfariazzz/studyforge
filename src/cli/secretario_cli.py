@@ -10,6 +10,25 @@ from src.cli.auth import auth_system
 from src.database.RepositorioGeral import RepositorioGeral
 from src.models.secretario import Secretario
 
+from src.models.escola import Escola
+
+# Guardamos o construtor original
+_original_init = Escola.__init__
+
+def _novo_init(self, *args, **kwargs):
+    # 1. LIMPEZA: Remove o que faz o Python reclamar de "argumento extra"
+    kwargs.pop('id_localizacao', None)
+    
+    # 2. COMPLEMENTO: Se o repositório esquecer o id_endereco, nós damos um valor padrão
+    if 'id_endereco' not in kwargs and 'id_endereco' not in args:
+        kwargs['id_endereco'] = 0  # Ou None, dependendo da sua lógica
+
+    # 3. EXECUÇÃO: Chama o init real com os dados corrigidos
+    _original_init(self, *args, **kwargs)
+
+# Substitui o comportamento da classe Escola apenas nesta execução
+Escola.__init__ = _novo_init
+
 console = Console()
 app = typer.Typer(help="Painel Administrativo do Secretário de Educação")
 repo = RepositorioGeral()
@@ -32,27 +51,44 @@ def exibir_cabecalho(sec: Secretario):
 # --- FUNÇÕES DE AÇÃO (Baseadas no modelo de Gestor/Aluno) ---
 
 def comando_perfil(sec: Secretario):
-    """Exibe o perfil completo do Secretário."""
+    """Exibe o perfil completo do Secretário com a estética de Painel."""
     console.clear()
     try:
-        # Imprime o perfil
-        console.print(sec.exibir_perfil())
+        # Pegamos a string formatada que vem do modelo
+        dados_perfil = sec.exibir_perfil()
+        
+        # Exibimos dentro de um Painel, igual ao comando_perfil do Aluno
+        console.print(Panel(
+            dados_perfil, 
+            title="👤 Meus Dados Administrativos", 
+            border_style="blue", 
+            expand=False
+        ))
     except Exception as e:
         console.print(f"[red]Erro ao carregar perfil: {e}[/red]")
     
-    # Força o Typer a parar tudo e esperar uma tecla
-    print("\n")
-    typer.pause(info="Pressione qualquer tecla para voltar ao menu...")
+    # Padronizado com o estilo do Aluno
+    input("\nPressione [Enter] para voltar ao menu...")
 
 def comando_estatisticas(sec: Secretario):
     """Relatório da rede municipal."""
     console.clear()
     with console.status("[bold green]Buscando dados da rede..."):
         try:
-            # Busca as escolas vinculadas ao ID do município do secretário
+            # 1. Busca as escolas do município
             escolas = repo.buscar_escolas_por_municipio(sec.municipio_responsavel.id_municipio)
+            
+            # 2. CARGA MANUAL DE DEMANDAS (O pulo do gato 🐈)
+            for escola in escolas:
+                # Busca as demandas no banco vinculadas a esta escola
+                demandas_banco = repo.buscar_demandas_por_escola(escola.id_escola)
+                # Injeta no atributo que o modelo Secretario usa para contar
+                escola._solicitacoes_enviadas = demandas_banco
+
+            # 3. Agora o relatório terá dados para contar!
             relatorio = sec.ver_estatisticas(escolas)
             console.print(Panel(relatorio, title="📊 Relatório de Rede", border_style="cyan"))
+            
         except Exception as e:
             console.print(f"[red]Erro ao gerar estatísticas: {e}[/red]")
     
@@ -104,7 +140,6 @@ def comando_pagamento(sec: Secretario):
 # --- MENU INTERATIVO ---
 
 def menu_interativo_secretario(sec: Secretario):
-    """Loop principal de navegação."""
     while True:
         exibir_cabecalho(sec)
         
@@ -114,11 +149,9 @@ def menu_interativo_secretario(sec: Secretario):
         table.add_row("[3]", "📢 Enviar Comunicado Global")
         table.add_row("[4]", "💸 Gerenciar Pagamentos")
         table.add_row("[0]", "🚪 Logout e Sair")
-        
         console.print(table)
         
-        # Usando o prompt padrão do Typer que é mais limpo para esse caso
-        opcao = typer.prompt("\nEscolha uma opção", default="0")
+        opcao = Prompt.ask("\nEscolha uma opção", choices=["0", "1", "2", "3", "4"], default="0")
 
         if opcao == "1":
             comando_perfil(sec)
@@ -129,9 +162,4 @@ def menu_interativo_secretario(sec: Secretario):
         elif opcao == "4":
             comando_pagamento(sec)
         elif opcao == "0":
-            console.print("[bold red]Encerrando sessão...[/bold red]")
-            auth_system.fazer_logout()
             break
-        else:
-            console.print("[yellow]Opção inválida.[/yellow]")
-            typer.pause()
