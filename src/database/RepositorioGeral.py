@@ -374,6 +374,31 @@ class RepositorioGeral:
 			raise ValueError("Erro ao salvar demanda no banco de dados.")
 		
 	""""Métodos responsáveis por ler os dados do sistema no banco de dados SQLite e transformar em objetos novamente."""
+	def buscar_turma_por_id(self, id_busca):
+		try:
+			self.connect.row_factory = sqlite3.Row
+			cursor = self.connect.cursor()
+			id_limpo = self._limpar_id(id_busca)
+			cursor.execute("SELECT * FROM turma WHERE id_turma = ?", (id_limpo))
+			row = cursor.fetchone()
+			if not row:
+				return None
+			escola_obj = self.buscar_escola_por_id(row["id_escola"])
+			from src.models.turma import Turma
+			return Turma(
+				id_turma=row["id_turma"],
+				nome=row["nome"],
+				ano_letivo=row["ano_letivo"],
+				escola_associada=escola_obj,
+				turno=row["turno"],
+				capacidade_maxima=row["capacidade_maxima"]
+			)
+		except Exception as e:
+			print(f"❌ Erro ao reconstruir objeto Turma: {e}")
+			return None
+		finally:
+			self.connect.row_factory = None
+
 	def buscar_usuario_por_cpf(self, cpf_busca):
 		try:
 
@@ -737,38 +762,6 @@ class RepositorioGeral:
 		finally:
 			self.connect.row_factory = None
 		
-	def buscar_turma_por_id(self, id_busca):
-		try:
-			self.connect.row_factory = sqlite3.Row
-			cursor = self.connect.cursor()
-			id_mun = self._limpar_id(municipio)
-			sql = "SELECT * FROM escola WHERE id_municipio = ?"
-			cursor.execute(sql, (id_mun,))
-			rows = cursor.fetchall()
-			escolas_encontradas = []
-			for row in rows:
-				municipio_obj = self.buscar_municipio_por_id(row["id_municipio"])
-				gestor_obj = None
-				if row["id_gestor"]:
-					gestor_obj = self.buscar_gestor_por_id(row["id_gestor"])
-				from src.models.escola import Escola
-				escola_obj = Escola(
-					nome=row["nome"],
-					id_localizacao=row["id_localizacao"],
-					id_escola=row["id_escola"],
-					gestor_atual=gestor_obj,
-					verba_disponivel_escola=row["verba_disponivel_escola"],
-					id_municipio=row["id_municipio"],	
-					capacidade_infraestrutura=row["capacidade_infraestrutura"],
-					municipio=municipio_obj
-				)
-				escolas_encontradas.append(escola_obj)
-			return escolas_encontradas
-		except Exception as e:
-			print(f"❌ Erro ao buscar escolas do município {municipio}: {e}")
-			return []
-		finally:
-			self.connect.row_factory = None
 		
 	def listar_turmas(self):
 		try:
