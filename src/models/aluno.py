@@ -28,7 +28,7 @@ class Aluno(Usuario):
         """
         super().__init__(id_usuario, nome, cpf, email, senha, telefone, data_nascimento, "ALUNO")
 
-        self.turma_associada = turma_associada 
+        self._turma_associada = turma_associada 
 
         if matricula:
             self._id_matricula = matricula
@@ -55,15 +55,10 @@ class Aluno(Usuario):
     
     @turma_associada.setter
     def turma_associada(self, valor):
-        if hasattr(valor, 'id_turma'):
-            self._turma_associada = valor
-            # Só chama adicionar_aluno se o aluno ainda não estiver na lista da turma
-            if self not in valor.alunos_matriculados:
-                valor.adicionar_aluno(self)
-        elif isinstance(valor, str) or valor is None:
-            self._turma_associada = valor
-        else:
-            raise ValueError("Erro: turma_associada deve ser um objeto Turma ou string.")
+        from src.models.turma import Turma
+        if valor is not None and not isinstance(valor, (Turma, int, str)):
+            raise TypeError("Erro: Turma deve ser um objeto Turma ou ID válido.")
+        self._turma_associada = valor
 
     #implementado por Levi para integração com o src/services/avaliador_frequencia.py (RN02)    
     @property
@@ -166,20 +161,17 @@ class Aluno(Usuario):
         Returns:
             str: String formatada contendo informacoes do perfil do aluno.
         """
-        nome_turma = self.turma_associada.nome if hasattr(self.turma_associada, 'nome') else "Não vinculada"
-        status_conta = "Ativa" if self._status else "Inativa/Suspensa"
-
+        turma_attr = getattr(self, '_turma_associada', None)
+        nome_turma = turma_attr.nome if hasattr(turma_attr, 'nome') else str(turma_attr or "Não vinculada")
+        status_conta = "Ativa" if getattr(self, '_status', True) else "Inativa"
+        
         return (
-            f"\n" + "="*40 + "\n"
-            f"          PERFIL DO ALUNO\n"
-            f"="*40 + "\n"
             f"Nome: {self.nome}\n"
-            f"Matrícula: {self.id_matricula}\n"
+            f"Matrícula: {getattr(self, '_id_matricula', 'N/A')}\n"
             f"Turma: {nome_turma}\n"
             f"E-mail: {self.email}\n"
             f"Status: {status_conta}\n"
-            f"Frequência Geral: {self.frequencia}%\n"
-            f"="*40
+            f"Frequência: {getattr(self, 'frequencia', 0)}%"
         )
 
     def visualizar_notas(self):
@@ -315,9 +307,11 @@ class Aluno(Usuario):
         Returns:
             dict: Dicionario com id_usuario, matricula e id_turma do aluno.
         """
-        return{
-            "id_usuario": self._id_usuario,
-            "id_turma": self._turma_associada._id_turma if self._turma_associada else None,
-            "matricula": self._id_matricula,
+        id_turma = getattr(self._turma_associada, 'id_turma', self._turma_associada)
+        
+        return {
+            "id_usuario": self.id_usuario,
+            "id_matricula": self.id_matricula,
+            "id_turma": id_turma
         }
     

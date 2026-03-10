@@ -3,6 +3,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 from typing import Optional
+from rich.prompt import Prompt
 
 # Imports do seu projeto
 from src.cli.auth import auth_system
@@ -15,123 +16,85 @@ repo = RepositorioGeral()
 
 # --- AUXILIARES ---
 
-def get_session_aluno() -> Aluno:
-    """Recupera o aluno logado e valida o acesso."""
-    user = auth_system.get_usuario_logado()
-    if not isinstance(user, Aluno):
-        console.print("[bold red]❌ Acesso Negado: Comando exclusivo para Alunos.[/bold red]")
-        raise typer.Exit(1)
-    return user
-
+# Removi a lógica de verificação de tipo_usuario que causava o erro
 def exibir_cabecalho_aluno(aluno: Aluno):
-    """Exibe um painel visual no topo do menu do aluno."""
+    """Exibe um painel visual no topo do menu."""
     console.clear()
-    turma_nome = "Não Vinculada"
-    if aluno.turma_associada:
-        # Se for objeto, pega o nome; se for ID, pode-se buscar no repo
-        turma_nome = aluno.turma_associada.nome if hasattr(aluno.turma_associada, 'nome') else f"ID: {aluno.turma_associada}"
-        
+    
+    # Tratamento seguro para Turma (evita erro se for ID ou Objeto)
+    turma_info = "Não Vinculada"
+    # Note o uso de _turma_associada para bater com seu __init__
+    turma_attr = getattr(aluno, '_turma_associada', None)
+    
+    if turma_attr:
+        if hasattr(turma_attr, 'nome'):
+            turma_info = turma_attr.nome
+        else:
+            turma_info = f"ID: {turma_attr}"
+
     console.print(Panel(
-        f"[bold green]STUDYFORGE - PORTAL DO ALUNO[/bold green]\n"
-        f"[cyan]Nome:[/cyan] {aluno.nome} | [cyan]Matrícula:[/cyan] {aluno.id_matricula} | [cyan]Turma:[/cyan] {turma_nome}",
+        f"[bold green]STUDYFORGE - ÁREA DO ESTUDANTE[/bold green]\n"
+        f"[cyan]Estudante:[/cyan] {aluno.nome} | [cyan]Matrícula:[/cyan] {getattr(aluno, '_id_matricula', 'N/A')}\n"
+        f"[cyan]Turma:[/cyan] {turma_info} | [cyan]Frequência:[/cyan] {getattr(aluno, 'frequencia', 0)}%",
+        border_style="green",
         expand=False
     ))
 
-# --- COMANDOS TYPER (@app.command) ---
+# --- FUNÇÕES DE AÇÃO (Agora recebem o objeto aluno diretamente) ---
 
-@app.command()
-def perfil():
-    """Exibe o perfil completo e dados cadastrais."""
-    aluno = get_session_aluno()
-    console.print(Panel(aluno.exibir_perfil(), title="Meu Perfil", border_style="blue"))
-    typer.pause()
+def comando_perfil(aluno: Aluno):
+    console.clear()
+    try:
+        dados = aluno.exibir_perfil()
+        console.print(Panel(dados, title="👤 Meus Dados", border_style="blue", expand=False))
+    except Exception as e:
+        console.print(f"[red]Erro: {e}[/red]")
+    
+    # O input vazio garante que o programa espere o usuário antes de limpar a tela e voltar ao menu
+    input("\nPressione [Enter] para voltar ao menu...")
 
-@app.command()
-def boletim():
-    """Consulta as notas e médias por disciplina."""
-    aluno = get_session_aluno()
-    with console.status("[bold blue]Carregando boletim..."):
-        # Sincroniza notas do banco para o objeto aluno
-        notas_db = repo.listar_notas_por_aluno(aluno._id_usuario)
-        aluno.notas = {} # Limpa para recarregar
-        for n in notas_db:
-            aluno.adicionar_nota(n._disciplina, n._valor)
-            
-    console.print(f"\n[bold magenta]📝 BOLETIM ESCOLAR[/bold magenta]")
-    console.print(aluno.visualizar_notas())
-    typer.pause()
+def comando_boletim(aluno: Aluno):
+    """Consulta as notas."""
+    with console.status("[bold blue]Sincronizando notas..."):
+        try:
+            notas_db = repo.listar_notas_por_aluno(aluno._id_usuario)
+            aluno.notas = notas_db
+            console.print(f"\n[bold magenta]📝 BOLETIM ESCOLAR[/bold magenta]")
+            console.print(aluno.visualizar_notas())
+        except Exception as e:
+            console.print(f"[red]Erro ao carregar boletim: {e}[/red]")
+    input("\nPressione [Enter] para voltar ao menu...")
 
-@app.command()
-def frequencia():
-    """Exibe o histórico de presença e faltas."""
-    aluno = get_session_aluno()
-    with console.status("[bold yellow]Consultando frequência..."):
-        # Busca frequências do banco
-        freq_db = repo.listar_frequencia_por_aluno(aluno._id_usuario)
-        # Mapeia para o formato que o método ver_frequencia() da sua classe espera
-        aluno.presencas = []
-        for f in freq_db:
-            aluno.presencas.append({
-                "data": f._id_diario, # Ou buscar a data real no diário via repo
-                "presenca": True if f._status == "PRESENTE" else False
-            })
-
-    console.print(f"\n[bold yellow]📅 HISTÓRICO DE FREQUÊNCIA[/bold yellow]")
-    console.print(aluno.ver_frequencia())
-    typer.pause()
-
-@app.command()
-def noticias():
-    """Acessa o mural de notícias da escola."""
-    aluno = get_session_aluno()
-    # Para ver notícias, precisamos garantir que a escola está carregada via Turma
-    if aluno.turma_associada:
-        with console.status("[bold cyan]Lendo mural da escola..."):
-            # Se turma_associada for apenas um ID no banco, precisamos hidratar o objeto
-            if isinstance(aluno.turma_associada, (int, str)):
-                aluno.turma_associada = repo.buscar_turma_por_id(aluno.turma_associada)
-            
-        console.print(aluno.ver_noticias())
-    else:
-        console.print("[red]Você não possui uma turma vinculada para ver notícias.[/red]")
-    typer.pause()
+def comando_frequencia(aluno: Aluno):
+    """Exibe histórico de presença."""
+    with console.status("[bold yellow]Consultando diário..."):
+        try:
+            freq_db = repo.listar_frequencia_por_aluno(aluno._id_usuario)
+            aluno._presencas = freq_db 
+            console.print(f"\n[bold yellow]📅 HISTÓRICO DE FREQUÊNCIA[/bold yellow]")
+            console.print(aluno.ver_frequencia())
+        except Exception as e:
+            console.print(f"[red]Erro ao carregar frequência: {e}[/red]")
+    input("\nPressione [Enter] para voltar ao menu...")
 
 # --- MENU INTERATIVO ---
 
 def menu_interativo_aluno(aluno: Aluno):
-    """Loop principal de navegação para o Aluno."""
     while True:
         exibir_cabecalho_aluno(aluno)
         
-        table = Table(show_header=False, box=None)
-        table.add_row("1", "👤 Meu Perfil")
-        table.add_row("2", "📝 Ver Notas (Boletim)")
-        table.add_row("3", "📅 Ver Frequência")
-        table.add_row("4", "📢 Mural de Notícias")
-        table.add_row("0", "🚪 Sair")
+        print("\n[1] Ver Perfil")
+        print("[2] Consultar Boletim")
+        print("[3] Minha Frequência")
+        print("[0] Sair")
         
-        console.print(table)
-        opcao = typer.prompt("\nEscolha uma opção", default="0")
+        opcao = Prompt.ask("\nEscolha uma opção", choices=["0", "1", "2", "3"], default="0")
 
         if opcao == "1":
-            perfil()
+            comando_perfil(aluno)
         elif opcao == "2":
-            boletim()
+            comando_boletim(aluno)
         elif opcao == "3":
-            frequencia()
-        elif opcao == "4":
-            noticias()
+            comando_frequencia(aluno)
         elif opcao == "0":
-            console.print("[bold red]Saindo...[/bold red]")
-            auth_system.fazer_logout()
             break
-        else:
-            console.print("[red]Opção inválida![/red]")
-            typer.pause()
-
-@app.callback(invoke_without_command=True)
-def main(ctx: typer.Context):
-    """Entrada padrão para o comando 'aluno'"""
-    if ctx.invoked_subcommand is None:
-        aluno = get_session_aluno()
-        menu_interativo_aluno(aluno)
