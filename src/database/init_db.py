@@ -1,3 +1,8 @@
+"""
+Esse arquivo tem a função de limpar o que for velho e dar início a um secretário no Banco de Dados, que é 
+o usuário base para todos os outros. 
+"""
+
 import os
 from src.database.RepositorioGeral import RepositorioGeral
 from src.models.municipio import Municipio

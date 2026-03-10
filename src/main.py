@@ -18,11 +18,13 @@ app = typer.Typer(
 registrar_comandos(app)
 
 @app.command()
-def login(
-    cpf: str = typer.Option(..., prompt="CPF", help="CPF no formato XXX.XXX.XXX-XX"),
-    senha: str = typer.Option(..., prompt=True, hide_input=True, help="Senha do usuário"),
-) -> None:
+def login():
     """Faz login no sistema e inicia o painel correspondente."""
+    # Como não estamos mais usando invoke/forward complexo, 
+    # o Typer gerencia os prompts automaticamente aqui.
+    cpf = typer.prompt("Digite seu CPF")
+    senha = typer.prompt("Sua senha", hide_input=True)
+    
     sucesso, mensagem = auth_system.fazer_login(cpf, senha)
     console.print(mensagem)
     
@@ -30,19 +32,17 @@ def login(
         tipo = auth_system.obter_tipo_usuario_atual()
         usuario = auth_system.obter_usuario_logado()
 
-        # Redirecionamento automático baseado no perfil
         if tipo == "SECRETARIO":
             from src.cli.secretario_cli import menu_interativo_secretario
             menu_interativo_secretario(usuario)
         elif tipo == "GESTOR":
-            # Aqui chamamos o menu interativo que criamos no seu gestor_cli
             from src.cli.gestor_cli import menu_interativo_gestor
             menu_interativo_gestor(usuario)
         else:
             console.print(f"[yellow]Painel interativo para {tipo} em desenvolvimento.[/yellow]")
-            console.print(f"Use: [bold]python -m src.main {tipo.lower()} --help[/bold] para comandos avulsos.")
     else:
-        raise typer.Exit(code=1)
+        if typer.confirm("Deseja tentar o login novamente?"):
+            login() # Aqui a recursão simples funciona sem erro de ctx
 
 @app.command()
 def logout() -> None:
@@ -52,12 +52,14 @@ def logout() -> None:
 
 @app.callback(invoke_without_command=True)
 def main(ctx: typer.Context) -> None:
-    """
-    Menu Inicial do StudyForge.
-    Aparece quando você roda apenas 'python -m src.main'.
-    """
-    if ctx.invoked_subcommand is None:
-        # Layout do Menu Inicial
+    """Menu Inicial do StudyForge."""
+    # Se o usuário digitou um comando (ex: python -m src.main login), 
+    # o programa executa o comando e ignora o menu.
+    if ctx.invoked_subcommand is not None:
+        return
+
+    # Se rodou apenas 'python -m src.main', entra no loop do menu principal
+    while True:
         console.print(Panel.fit(
             "[bold cyan]STUDYFORGE - SISTEMA DE GESTÃO[/bold cyan]\n"
             "[white]Versão 1.0 - Módulo CLI[/white]",
@@ -72,15 +74,15 @@ def main(ctx: typer.Context) -> None:
         opcao = typer.prompt("\nEscolha uma ação", default="1")
         
         if opcao == "1":
-            # Invoca o comando de login definido acima
-            ctx.invoke(login)
+            login() # Chama a função diretamente, sem ctx.forward/invoke
         elif opcao == "2" or opcao == "help":
             console.print(ctx.get_help())
+            typer.pause() # Pausa para o usuário ler o help antes de limpar a tela
         elif opcao == "0" or opcao == "sair":
             console.print("[yellow]Até logo![/yellow]")
             raise typer.Exit()
         else:
-            console.print("[red]Opção inválida. Use --help para assistência.[/red]")
+            console.print("[red]Opção inválida.[/red]")
 
 if __name__ == "__main__":
     app()
