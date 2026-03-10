@@ -1,5 +1,8 @@
 from src.models.usuario import Usuario
 from datetime import date
+from src.models.nota import Nota
+from src.models.diario import Diario
+from src.models.frequencia import Frequencia
 import re
 
 """
@@ -122,14 +125,40 @@ class Professor(Usuario):
         if turma not in self.turmas_associadas:
             return "Professor não pertence a esta turma."
         
-        for registro in lista_presenca:
-            aluno_objeto = registro.get("aluno")
-            status_vaga = registro.get("presenca")
-            
-            aluno_objeto.registrar_presenca(data, status_vaga) 
+        # 2. Instancia o objeto Diario (Cabeçalho da Aula)
+        # Diario(id_diario, id_professor, id_turma, disciplina, data, conteudo)
+        novo_diario = Diario(
+            id_diario=None,
+            id_professor=self.id_usuario,
+            id_turma=turma.id_turma,
+            disciplina=self.area_atuacao,
+            data=data,
+            conteudo=conteudo_aula
+        )
 
-        turma.registrar_aula(self, data, conteudo_aula)
-        return "Chamada e aula registradas com sucesso!"
+        # 3. Cria a lista de objetos Frequencia
+        objetos_frequencia = []
+        for registro in lista_presenca:
+            aluno = registro.get("aluno")
+            status = "PRESENTE" if registro.get("presenca") else "AUSENTE"
+            
+            # Frequencia(id_frequencia, id_aluno, id_diario, status, data)
+            nova_freq = Frequencia(
+                id_frequencia=None,
+                id_aluno=aluno.id_usuario,
+                id_diario=None, # Será vinculado após o save do diário no banco
+                status=status,
+                data=data
+            )
+
+            # Atualiza o estado em memória do objeto Aluno (opcional, se desejar)
+            if hasattr(aluno, 'registrar_presenca'):
+                aluno.registrar_presenca(data, registro.get("presenca"))
+                
+            objetos_frequencia.append(nova_freq)
+
+        # 4. Retorna a tupla de objetos para o RepositorioGeral salvar
+        return novo_diario, objetos_frequencia
 
     def exibir_perfil(self):
         """
@@ -160,7 +189,7 @@ class Professor(Usuario):
             f"="*40
         )
 
-    def lancar_nota(self, turma, aluno, disciplina, valor, tipo, data_prova):
+    def lancar_nota(self, turma, aluno, valor, tipo, data_prova):
         """
         Lanca uma nota para um aluno em uma disciplina especifica.
         
@@ -181,11 +210,21 @@ class Professor(Usuario):
         if aluno not in turma.alunos_matriculados or turma not in self._turmas_associadas:
             return "Erro de permissão: Vínculo inválido entre professor, turma ou aluno."
 
-        aluno.adicionar_nota(disciplina, valor)
+        nova_nota = Nota(
+            id_nota=None,
+            id_aluno=aluno.id_usuario,
+            id_turma=turma.id_turma,
+            disciplina=self.area_atuacao,
+            valor=valor,
+            data=data_prova,
+            tipo=tipo,
+            aluno=aluno
+        )
 
-        turma.registrar_nota_no_sistema(aluno, disciplina, valor, tipo, data_prova)
+        if hasattr(aluno, 'adicionar_nota'):
+            aluno.adicionar_nota(nova_nota)
         
-        return f"Nota lançada com sucesso para {aluno.nome}."
+        return nova_nota
             
     def enviar_material(self, turma, nome_material, link):
         """

@@ -38,6 +38,12 @@ def login():
         elif tipo == "GESTOR":
             from src.cli.gestor_cli import menu_interativo_gestor
             menu_interativo_gestor(usuario)
+        elif tipo == "ALUNO":
+            from src.cli.aluno_cli import menu_interativo_aluno
+            menu_interativo_aluno(usuario)
+        elif tipo == "PROFESSOR":
+            from src.cli.professor_cli import menu_interativo_professor
+            menu_interativo_professor(usuario)
         else:
             console.print(f"[yellow]Painel interativo para {tipo} em desenvolvimento.[/yellow]")
     else:

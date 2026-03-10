@@ -35,7 +35,7 @@ class RepositorioGeral:
 	"data_nascimento"	TEXT NOT NULL,
 	"tipo"	TEXT CHECK("tipo" IN ('SECRETARIO', 'GESTOR', 'PROFESSOR', 'ALUNO')),
     "login"	INTEGER DEFAULT 0,
-	"status"	INTEGER  DEFAULT 1,
+	"status"	INTEGER  DEFAULT 1
     ); 
                          
     CREATE TABLE IF NOT EXISTS municipio(
