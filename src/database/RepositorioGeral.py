@@ -216,9 +216,15 @@ class RepositorioGeral:
 
 	""""Métodos responsáveis por salvar os objetos do sistema no banco de dados SQLite."""
 	def _limpar_id(self, valor):
-		for attr in ["_id_usuario", "_id_municipio", "_id_escola", "_id_turma", "_id_diario"]:
+		if valor is None:
+			return None
+		if isinstance(valor, (int, float, str)):
+			return valor
+		ordem_busca = [ "_id_frequencia", "_id_nota", "_id_diario", "_id_demanda", "_id_turma", "_id_escola", "_id_usuario", "_id_municipio"]
+		for attr in ordem_busca:
 			if hasattr(valor, attr):
-				return getattr(valor, attr)
+				res = getattr(valor, attr)
+				return self._limpar_id(res)
 		return valor
 
 	def salvar_municipio(self, municipio_obj):

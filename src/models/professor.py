@@ -265,7 +265,7 @@ class Professor(Usuario):
         return{
             "id_usuario": self.id_usuario,
             "registro_funcional": self.registro_funcional,
-            "escola_associada": self.escola_associada.id_escola if self.escola_associada else None,
+            "id_escola": self.escola_associada.id_escola if self.escola_associada else None,
             "titulacao": self.titulacao,
             "area_atuacao": self.area_atuacao,
             "salario": self.salario,
