@@ -7,10 +7,26 @@ Representa a entidade Professor conforme o diagrama UML.
 Herda atributos base de Usuario e adiciona dados funcionais e acadêmicos.
 """
 class Professor(Usuario):
-    """Construtor da classe Professor."""
     def __init__(self, id_usuario, nome, cpf, email, senha, telefone, data_nascimento,
                  registro_funcional, escola_associada, titulacao, area_atuacao, 
                  salario):
+        """
+        Inicializa um novo professor no sistema StudyForge.
+        
+        Args:
+            id_usuario (int): Identificador unico do professor.
+            nome (str): Nome completo do professor.
+            cpf (str): CPF do professor (11 digitos numericos).
+            email (str): Endereco de email do professor.
+            senha (str): Senha de acesso (minimo 8 caracteres).
+            telefone (str): Numero de telefone (10 ou 11 digitos).
+            data_nascimento (str): Data de nascimento no formato DD/MM/AAAA.
+            registro_funcional (str): Registro funcional no formato RF-AAAA-NNNN.
+            escola_associada (Escola): Objeto da escola em que o professor trabalha.
+            titulacao (str): Grau academico (Graduado, Especialista, Mestre, Doutor ou Pos-Doutor).
+            area_atuacao (str): Area de atuacao/disciplina do professor.
+            salario (float): Salario mensaldo professor.
+        """
         super().__init__(id_usuario, nome, cpf, email, senha, telefone, data_nascimento, "PROFESSOR")
         
         self.registro_funcional = registro_funcional
@@ -72,11 +88,37 @@ class Professor(Usuario):
     #-------
 
     def get_permissao(self):
-        """Função que retorna as permissões da classe Professor"""
+        """
+        Retorna as permissoes do professor no sistema.
+        
+        Returns:
+            list: Lista contendo as permissoes do professor:
+                  - LANCAR_NOTAS: Lancamento de notas para alunos
+                  - REGISTRAR_PRESENCA: Registro de frequencia dos alunos
+                  - POSTAR_CONTEUDO: Publicacao de conteudo e aulas
+                  - ENVIAR_MATERIAL: Envio de materiais didaticos
+                  - VER_TURMAS: Visualizacao das turmas associadas
+        """
         return ["LANCAR_NOTAS", "REGISTRAR_PRESENCA", "POSTAR_CONTEUDO", "ENVIAR_MATERIAL", "VER_TURMAS"]
 
     def realizar_chamada(self, turma, data, lista_presenca, conteudo_aula):
-        """Função para que o professor possa realizar a chamada da turma"""
+        """
+        Registra a chamada (frequencia) e a aula para a turma.
+        
+        Permite que o professor registre a presenca/falta dos alunos em uma aula
+        e documente o conteudo apresentado.
+        
+        Args:
+            turma (Turma): Objeto da turma na qual a aula ocorreu.
+            data (date): Data da aula.
+            lista_presenca (list): Lista de dicionarios com chaves:
+                                   - 'aluno': Objeto do aluno
+                                   - 'presenca': Booleano (True se presente, False se faltou)
+            conteudo_aula (str): Descricao do conteudo ministrado na aula.
+        
+        Returns:
+            str: Mensagem de sucesso ou erro sobre o registro da chamada.
+        """
         if turma not in self.turmas_associadas:
             return "Professor não pertence a esta turma."
         
@@ -91,8 +133,14 @@ class Professor(Usuario):
 
     def exibir_perfil(self):
         """
-        Implementação do método abstrato da classe Usuario para o Professor.
-        Retorna uma string formatada com os dados funcionais e turmas regentes.
+        Exibe o perfil completo do professor.
+        
+        Implementacao do metodo abstrato da classe Usuario que retorna uma string
+        formatada com os dados funcionais do professor, incluindo registro funcional,
+        titulacao, area de atuacao, email e turmas regentes.
+        
+        Returns:
+            str: String formatada contendo informacoes do perfil do professor.
         """
         nomes_turmas = [turma.nome for turma in self._turmas_associadas]
         turmas_str = ", ".join(nomes_turmas) if nomes_turmas else "Nenhuma turma alocada"
@@ -113,7 +161,23 @@ class Professor(Usuario):
         )
 
     def lancar_nota(self, turma, aluno, disciplina, valor, tipo, data_prova):
-        """Função para que o professor lance a nota de cada Aluno"""
+        """
+        Lanca uma nota para um aluno em uma disciplina especifica.
+        
+        Permite que o professor registre notas dos alunos em sua turma,
+        atualizando tanto o boletim do aluno quanto o sistema da turma.
+        
+        Args:
+            turma (Turma): Objeto da turma do aluno.
+            aluno (Aluno): Objeto do aluno que recebera a nota.
+            disciplina (str): Nome da disciplina.
+            valor (float): Valor da nota (0 a 10).
+            tipo (str): Tipo de avaliacao (ex: Prova, Trabalho, Participacao).
+            data_prova (date): Data da avaliacao.
+        
+        Returns:
+            str: Mensagem de sucesso ou erro sobre o lancamento da nota.
+        """
         if aluno not in turma.alunos_matriculados or turma not in self._turmas_associadas:
             return "Erro de permissão: Vínculo inválido entre professor, turma ou aluno."
 
@@ -124,7 +188,20 @@ class Professor(Usuario):
         return f"Nota lançada com sucesso para {aluno.nome}."
             
     def enviar_material(self, turma, nome_material, link):
-        """Função para que o professor envie um material para a turma desejada"""
+        """
+        Envia um material didatico para uma turma.
+        
+        Permite que o professor compartilhe materiais (slides, PDFs, videos, etc)
+        com os alunos de uma turma especifica.
+        
+        Args:
+            turma (Turma): Objeto da turma que recebera o material.
+            nome_material (str): Nome descritivo do material.
+            link (str): URL ou caminho para acessar o material.
+        
+        Returns:
+            str: Mensagem de sucesso ou erro sobre o envio do material.
+        """
         if turma not in self.turmas_associadas:
             return "O professor não pertence a esta turma."
         
@@ -137,14 +214,20 @@ class Professor(Usuario):
 
     def to_dict_especifico(self):
         """
-        Exporta os dados do professor em formato de dicionário para persistência.
-        Integra os dados da classe base Usuario com os atributos funcionais.
+        Exporta os dados especificos do professor em formato de dicionario.
+        
+        Retorna um dicionario contendo os atributos funcionais e academicos
+        do professor para persistencia em banco de dados ou serializacao JSON.
+        
+        Returns:
+            dict: Dicionario com id_usuario, salario, titulacao, area_atuacao,
+                  registro_funcional e id_escola.
         """
         return{
             "id_usuario": self.id_usuario,
-            "salario": self.salario,
+            "registro_funcional": self.registro_funcional,
+            "escola_associada": self.escola_associada.id_escola if self.escola_associada else None,
             "titulacao": self.titulacao,
             "area_atuacao": self.area_atuacao,
-            "registro_funcional": self.registro_funcional,
-            "escola_associada": self.escola_associada.id_escola if self.escola_associada else None 
+            "salario": self.salario,
         }

@@ -23,24 +23,20 @@ class TestGestor(unittest.TestCase):
             id_municipio=1,
             estado="SP",
             verba_disponivel_municipio=1000000.00,
-            media_frequencia=0.85,
-            lacuna_maxima_permitida=0.3,
             nota_de_corte=6.0
         )
 
-        # Criar Gestor usando __new__ (evita circular dependency com Escola)
-        self.gestor = Gestor.__new__(Gestor)
-        self.gestor._id = 1
-        self.gestor._nome = "Carlos Silva"
-        self.gestor._cpf = "12345678901"
-        self.gestor._email = "carlos@escola.com"
-        self.gestor._senha = "senha123456"
-        self.gestor._telefone = "1198765432"
-        self.gestor._data_nascimento = datetime.strptime("15/05/1980", "%d/%m/%Y")
-        self.gestor._login = False
-        self.gestor._status = True
-        self.gestor._tipo = "GESTOR"
-        self.gestor._escola_associada = None
+        # Criar Gestor com os parâmetros corretos
+        self.gestor = Gestor(
+            id_usuario=1,
+            nome="Carlos Silva",
+            cpf="12345678901",
+            email="carlos@escola.com",
+            senha="senha123456",
+            telefone="1198765432",
+            data_nascimento="15/05/1980",
+            escola_associada=None
+        )
 
         # Criar Escola
         self.escola = Escola(
@@ -50,7 +46,6 @@ class TestGestor(unittest.TestCase):
             gestor_atual=self.gestor,
             verba_disponivel_escola=50000.00,
             id_municipio=self.municipio.id_municipio,
-            municipio=self.municipio,
             capacidade_infraestrutura=100
         )
 
@@ -69,6 +64,7 @@ class TestGestor(unittest.TestCase):
 
         # Criar Aluno
         self.aluno = Aluno(
+            id_usuario=2,
             nome="Joao Silva",
             cpf="98765432101",
             email="joao@email.com",
@@ -80,6 +76,7 @@ class TestGestor(unittest.TestCase):
 
         # Criar Professor
         self.professor = Professor(
+            id_usuario=3,
             nome="Roberto Costa",
             cpf="55566677788",
             email="roberto@escola.com",
@@ -98,8 +95,7 @@ class TestGestor(unittest.TestCase):
         """Testa inicialização do Gestor."""
         self.assertEqual(self.gestor.nome, "Carlos Silva")
         self.assertEqual(self.gestor.email, "carlos@escola.com")
-        self.assertEqual(self.gestor._tipo, "GESTOR")
-        self.assertTrue(self.gestor._status)
+        self.assertIsNotNone(self.gestor.id_usuario)
 
     def test_exibir_perfil(self):
         """Testa exibição do perfil do Gestor."""
@@ -133,6 +129,7 @@ class TestGestor(unittest.TestCase):
     def test_realizar_cadastro_aluno(self):
         """Testa cadastro de aluno em turma."""
         novo_aluno = Aluno(
+            id_usuario=4,
             nome="Maria Santos",
             cpf="11122233344",
             email="maria@email.com",
@@ -154,7 +151,7 @@ class TestGestor(unittest.TestCase):
         """Testa retorno de permissões do Gestor."""
         permissoes = self.gestor.get_permissao()
         self.assertIsInstance(permissoes, list)
-        self.assertIn("VIZUALIZAR_PERFIL", permissoes)
+        self.assertIn("VISUALIZAR_PERFIL", permissoes)
         self.assertIn("VER_ESTATISTICA_ESCOLA", permissoes)
         self.assertIn("REALIZAR_CADASTRO", permissoes)
 

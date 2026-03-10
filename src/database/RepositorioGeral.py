@@ -27,24 +27,23 @@ class RepositorioGeral:
 		codigo_SQL = ('''
     CREATE TABLE IF NOT EXISTS usuario(
 	"id_usuario"	INTEGER PRIMARY KEY AUTOINCREMENT,
-	"cpf"	TEXT NOT NULL UNIQUE,
 	"nome"	TEXT NOT NULL,
+	"cpf"	TEXT NOT NULL UNIQUE,
 	"email"	TEXT NOT NULL UNIQUE,
 	"senha"	TEXT NOT NULL,
 	"telefone"	TEXT NOT NULL CHECK(length("telefone") = 10 OR length("telefone") = 11),
 	"data_nascimento"	TEXT NOT NULL,
+	"tipo"	TEXT CHECK("tipo" IN ('SECRETARIO', 'GESTOR', 'PROFESSOR', 'ALUNO'))
     "login"	INTEGER DEFAULT 0,
 	"status"	INTEGER  DEFAULT 1,
-	"tipo"	TEXT CHECK("tipo" IN ('SECRETARIO', 'GESTOR', 'PROFESSOR', 'ALUNO'))
     ); 
                          
     CREATE TABLE IF NOT EXISTS municipio(
-	"id_municipio"	INTEGER,
 	"nome"	TEXT NOT NULL,
+	"id_municipio"	INTEGER PRIMARY KEY AUTOINCREMENT,
 	"estado"	TEXT NOT NULL CHECK(length("estado") = 2),
 	"verba_disponivel_municipio"	REAL DEFAULT 0.0,
 	"nota_de_corte" REAL DEFAULT 7.0,
-	PRIMARY KEY("id_municipio" AUTOINCREMENT)
     );
                          
     CREATE TABLE IF NOT EXISTS gestor(
@@ -55,13 +54,13 @@ class RepositorioGeral:
 	);
                          
     CREATE TABLE IF NOT EXISTS escola(
-	"id_escola"	INTEGER PRIMARY KEY AUTOINCREMENT,
 	"nome"	TEXT NOT NULL,
-	"verba_disponivel_escola"	REAL DEFAULT 0.0,
-    "capacidade_infraestrutura" 	INTEGER DEFAULT 500,     
-	"id_municipio"	INTEGER, -- referencia municipio na classe
+	"id_localizacao" INTEGER, -- referencia endereco na classe,
+	"id_escola"	INTEGER PRIMARY KEY AUTOINCREMENT,
 	"id_gestor"	INTEGER, -- referencia gestor_atual na classe
-    "id_localizacao" INTEGER, -- referencia endereco na classe
+	"verba_disponivel_escola"	REAL DEFAULT 0.0,
+	"id_municipio"	INTEGER, -- referencia municipio na classe
+    "capacidade_infraestrutura" 	INTEGER DEFAULT 500,     
 	FOREIGN KEY("id_gestor") REFERENCES "gestor"("id_usuario"),
 	FOREIGN KEY("id_municipio") REFERENCES "municipio"("id_municipio"),
     FOREIGN KEY("id_localizacao") REFERENCES "escola_endereco"("id_localizacao")
@@ -79,40 +78,38 @@ class RepositorioGeral:
     );
                          
     CREATE TABLE IF NOT EXISTS turma(
-	"id_turma"	INTEGER,
+	"id_turma"	INTEGER PRIMARY KEY AUTOINCREMENT,
 	"nome"	TEXT NOT NULL,
 	"ano_letivo"	INTEGER NOT NULL,
+	"id_escola"	INTEGER,
 	"turno"	TEXT NOT NULL CHECK("turno" IN ('MANHÃ', 'TARDE', 'NOITE', 'INTEGRAL')),
 	"capacidade_maxima"	INTEGER NOT NULL,
-	"id_escola"	INTEGER,
-	PRIMARY KEY("id_turma" AUTOINCREMENT),
 	FOREIGN KEY("id_escola") REFERENCES "escola"("id_escola") ON DELETE RESTRICT
     );
                          
     CREATE TABLE IF NOT EXISTS secretario(
-	"id_usuario"	INTEGER,
-	"departamento"	TEXT NOT NULL,
+	"id_usuario"	INTEGER PRIMARY KEY,
 	"id_municipio"	INTEGER, -- Referencia municipio_responsável no init da classe
-	PRIMARY KEY("id_usuario"),
+	"departamento"	TEXT NOT NULL,
 	FOREIGN KEY("id_municipio") REFERENCES "municipio"("id_municipio"),
 	FOREIGN KEY("id_usuario") REFERENCES "usuario"("id_usuario") ON DELETE CASCADE
     );
                          
     CREATE TABLE IF NOT EXISTS professor(
 	"id_usuario"	INTEGER PRIMARY KEY,
-	"salario"	REAL NOT NULL CHECK("salario" > 0),
+	"registro_funcional"	TEXT NOT NULL UNIQUE,
+	"id_escola" INTEGER, -- referencia escola_associada no init da classe
 	"titulacao"	TEXT NOT NULL,
 	"area_atuacao"	TEXT NOT NULL,
-	"registro_funcional"	TEXT NOT NULL UNIQUE,
-    "id_escola" INTEGER,
+	"salario"	REAL NOT NULL CHECK("salario" > 0),
 	FOREIGN KEY("id_usuario") REFERENCES "usuario"("id_usuario") ON DELETE CASCADE,
     FOREIGN KEY("id_escola") REFERENCES "escola"("id_escola")
     );
                          
     CREATE TABLE IF NOT EXISTS aluno(
 	"id_usuario"	INTEGER PRIMARY KEY,
+	"id_turma"	INTEGER, -- Referencia turma_associada na classe,
 	"matricula"	TEXT NOT NULL UNIQUE,
-	"id_turma"	INTEGER, -- Referencia turma_associada na classe
 	FOREIGN KEY("id_turma") REFERENCES "turma"("id_turma") ON DELETE RESTRICT,
 	FOREIGN KEY("id_usuario") REFERENCES "usuario"("id_usuario") ON DELETE CASCADE
     );
@@ -120,36 +117,35 @@ class RepositorioGeral:
     CREATE TABLE IF NOT EXISTS demanda(
 	"id_demanda"	INTEGER PRIMARY KEY AUTOINCREMENT,
 	"descricao"	TEXT NOT NULL,
-	"status"	TEXT DEFAULT 'PENDENTE' CHECK("status" IN ('PENDENTE', 'APROVADO', 'RECUSADO', 'EM_EXECUCAO', 'CONCLUIDO')),
 	"prioridade"	TEXT NOT NULL CHECK("prioridade" IN ('BAIXA', 'MEDIA', 'ALTA', 'URGENTE')),
-	"id_solicitante"	INTEGER, -- Referencia solicitante na classe
-	"id_municipio"	INTEGER, -- Referencia municipio_responsavel na classe
-    "tipo" TEXT CHECK("tipo" IN('INFRAESTRUTURA', 'PEDAGOGICA')),
+	"id_solicitante"	INTEGER, -- Referencia solicitante na classe,
+	"id_municipio"	INTEGER, -- Referencia municipio_responsavel na classe,
+	"tipo" TEXT CHECK("tipo" IN('INFRAESTRUTURA', 'PEDAGOGICA')),
+	"status"	TEXT DEFAULT 'PENDENTE' CHECK("status" IN ('PENDENTE', 'APROVADO', 'RECUSADO', 'EM_EXECUCAO', 'CONCLUIDO')),
     "data_criacao" TEXT NOT NULL, -- referencia criado_em na classe
 	"ultimo_editor" TEXT, -- referencia alterado_por na classe
     "data_alteracao" TEXT,  
-    "alerta_auditoria" TEXT, 
+    "alerta_auditoria" TEXT, -- referencia alerta na classe
 	FOREIGN KEY("id_municipio") REFERENCES "municipio"("id_municipio"),
 	FOREIGN KEY("id_solicitante") REFERENCES "usuario"("id_usuario")
     );
                          
     CREATE TABLE IF NOT EXISTS demanda_infraestrutura(
-	"id_demanda"	INTEGER,
+	"id_demanda"	INTEGER PRIMARY KEY,
 	"custo_estimado"	REAL NOT NULL CHECK("custo_estimado" >= 0),
 	"id_escola"	INTEGER,
-	PRIMARY KEY("id_demanda"),
 	FOREIGN KEY("id_demanda") REFERENCES "demanda"("id_demanda"),
 	FOREIGN KEY("id_escola") REFERENCES "escola"("id_escola") ON DELETE RESTRICT
     );
                          
     CREATE TABLE IF NOT EXISTS demanda_pedagogica(
 	"id_demanda"	INTEGER PRIMARY KEY,
-	"indice_lacuna"	REAL NOT NULL CHECK("indice_lacuna" >= 0.0 AND "indice_lacuna" <= 1.0),
-	"frequencia_apurada"	REAL NOT NULL CHECK("frequencia_apurada" <= 1.0 AND "frequencia_apurada" >= 0),
 	"id_turma"	INTEGER, -- referencia turma_alvo na classe
+	"frequencia_apurada"	REAL NOT NULL CHECK("frequencia_apurada" <= 1.0 AND "frequencia_apurada" >= 0),
     "disciplina_alvo" TEXT NOT NULL,
     "id_professor" INTEGER, -- referencia professor_responsavel na classe,
-    "qtd_alunos_risco" INTEGER,
+    "relatorio_alunos" INTEGER,
+	"indice_lacuna"	REAL NOT NULL CHECK("indice_lacuna" >= 0.0 AND "indice_lacuna" <= 1.0),
 	FOREIGN KEY("id_demanda") REFERENCES "demanda"("id_demanda"),
 	FOREIGN KEY("id_turma") REFERENCES "turma"("id_turma") ON DELETE RESTRICT,
     FOREIGN KEY("id_professor") REFERENCES "professor"("id_usuario")
@@ -157,12 +153,12 @@ class RepositorioGeral:
                          
     CREATE TABLE IF NOT EXISTS nota(
 	"id_nota"	INTEGER,
+	"id_aluno"	INTEGER,
+	"id_turma"	INTEGER,
 	"disciplina"	TEXT NOT NULL,
 	"valor"	REAL NOT NULL CHECK("valor" >= 0 AND "valor" <= 10),
 	"data"	TEXT NOT NULL,
 	"tipo"	TEXT NOT NULL,
-	"id_aluno"	INTEGER,
-	"id_turma"	INTEGER,
 	PRIMARY KEY("id_nota" AUTOINCREMENT),
 	FOREIGN KEY("id_aluno") REFERENCES "aluno"("id_usuario") ON DELETE RESTRICT,
 	FOREIGN KEY("id_turma") REFERENCES "turma"("id_turma")
@@ -234,20 +230,20 @@ class RepositorioGeral:
 	def salvar_usuario(self, usuario_obj):
 		try:
 			dados = usuario_obj.to_dict()
-			codigo_SQL = ('''INSERT INTO usuario (cpf, nome, email, senha, telefone, data_nascimento, tipo) VALUES (:cpf,:nome,:email,:senha,:telefone,:data_nascimento,:tipo)''')
+			codigo_SQL = ('''INSERT INTO usuario (nome, cpf, email, senha, telefone, data_nascimento, tipo, login) VALUES (:nome,:cpf,:email,:senha,:telefone,:data_nascimento,:tipo, :login)''')
 			self.cursor.execute(codigo_SQL, dados)
 			usuario_obj._id_usuario = self.cursor.lastrowid
 			dados_especificos = usuario_obj.to_dict_especifico()
 			dados_especificos["id_usuario"] = usuario_obj._id_usuario
 			sql_filha = None
 			if usuario_obj._tipo == "SECRETARIO":
-				sql_filha = ('''INSERT INTO secretario(id_usuario, departamento, id_municipio) VALUES (:id_usuario, :departamento, :id_municipio)''')
+				sql_filha = ('''INSERT INTO secretario(id_usuario, id_municipio, departamento) VALUES (:id_usuario, :id_municipio, :departamento)''')
 			elif usuario_obj._tipo == "GESTOR":
 				sql_filha = ('''INSERT INTO gestor(id_usuario, id_escola) VALUES (:id_usuario, :id_escola)''')
 			elif usuario_obj._tipo == "PROFESSOR":
-				sql_filha = ('''INSERT INTO professor(id_usuario, salario, titulacao, area_atuacao, registro_funcional, id_escola) VALUES (:id_usuario, :salario, :titulacao, :area_atuacao, :registro_funcional, :id_escola)''')
+				sql_filha = ('''INSERT INTO professor(id_usuario, registro_funcional, id_escola, titulacao, area_atuacao, salario) VALUES (:id_usuario, :registro_funcional, :id_escola, :titulacao, :area_atuacao, :salario)''')
 			elif usuario_obj._tipo == "ALUNO":
-				sql_filha = ('''INSERT INTO aluno(id_usuario, matricula, id_turma) VALUES (:id_usuario, :matricula, :id_turma)''')
+				sql_filha = ('''INSERT INTO aluno(id_usuario, id_turma, matricula) VALUES (:id_usuario, :id_turma, :matricula)''')
 			if sql_filha:
 				self.cursor.execute(sql_filha, dados_especificos)
 			self.connect.commit()
@@ -259,14 +255,14 @@ class RepositorioGeral:
 	def salvar_escola(self, escola_obj):
 		try:
 			dados = escola_obj.to_dict()
-			codigo_SQL = ('''INSERT INTO escola(nome, verba_disponivel_escola, capacidade_infraestrutura, id_municipio, id_gestor) VALUES (:nome, :verba_disponivel_escola, :capacidade_infraestrutura, :id_municipio, :id_gestor)''')
+			codigo_SQL = ('''INSERT INTO escola(nome, id_localizacao, id_escola, id_gestor, verba_disponivel_escola, id_municipio, capacidade_infraestrutura) VALUES (:nome, :id_localizacao, :id_escola, :id_gestor, :verba_disponivel_escola, :id_municipio, :capacidade_infraestrutura)''')
 			self.cursor.execute(codigo_SQL, dados)
 			escola_obj._id_escola = self.cursor.lastrowid
 			if escola_obj._endereco:
 				dados_endereco = escola_obj._endereco.to_dict()
 				dados_endereco["id_escola"] = escola_obj._id_endereco
 				dados_endereco["id_localizacao"] = 1
-				sql_endereco = ('''INSERT INTO endereco(id_escola, id_localizacao, cep, rua, numero, bairro) VALUES (:id_escola, :id_localizacao, :cep, :rua, :numero, :bairro)''')
+				sql_endereco = ('''INSERT INTO escola_endereco(id_escola, id_localizacao, cep, rua, numero, bairro) VALUES (:id_escola, :id_localizacao, :cep, :rua, :numero, :bairro)''')
 				self.cursor.execute(sql_endereco, dados_endereco)
 				escola_obj._endereco._id_localizacao = 1
 			self.connect.commit()
@@ -278,7 +274,7 @@ class RepositorioGeral:
 	def salvar_turma(self, turma_obj):
 		try:
 			dados = turma_obj.to_dict()
-			codigo_SQL = ('''INSERT INTO turma(nome, ano_letivo, turno, capacidade_maxima, id_escola) VALUES (:nome, :ano_letivo, :turno, :capacidade_maxima, :id_escola)''')
+			codigo_SQL = ('''INSERT INTO turma(nome, ano_letivo, id_escola, turno, capacidade_maxima) VALUES (:nome, :ano_letivo, :id_escola, :turno, :capacidade_maxima)''')
 			self.cursor.execute(codigo_SQL, dados)
 			turma_obj._id_turma = self.cursor.lastrowid
 			self.connect.commit()
@@ -290,7 +286,7 @@ class RepositorioGeral:
 	def salvar_nota(self, nota_obj):
 		try:
 			dados = nota_obj.to_dict()
-			codigo_SQL = ('''INSERT INTO nota(disciplina, valor, data, tipo, id_aluno, id_turma) VALUES (:disciplina, :valor, :data, :tipo, :id_aluno, :id_turma)''')
+			codigo_SQL = ('''INSERT INTO nota(id_aluno, id_turma, disciplina, valor, data, tipo) VALUES (:id_aluno, :id_turma, :disciplina, :valor, :data, :tipo)''')
 			self.cursor.execute(codigo_SQL, dados)
 			nota_obj._id_nota = self.cursor.lastrowid
 			self.connect.commit()
@@ -326,7 +322,7 @@ class RepositorioGeral:
 	def salvar_demanda(self, demanda_obj):
 		try:
 			dados = demanda_obj.to_dict()
-			codigo_SQL = ('''INSERT INTO demanda(descricao, status, prioridade, id_solicitante, id_municipio, tipo, data_criacao, ultimo_editor, data_alteracao, alerta_auditoria) VALUES (:descricao, :status, :prioridade, :id_solicitante, :id_municipio, :tipo, :data_criacao, :ultimo_editor, :data_alteracao, :alerta_auditoria)''')
+			codigo_SQL = ('''INSERT INTO demanda(descricao, prioridade, id_solicitante, id_municipio, tipo, status, data_criacao, ultimo_editor, data_alteracao, alerta_auditoria) VALUES (:descricao, :prioridade, :id_solicitante, :id_municipio, :tipo, :status, :data_criacao, :ultimo_editor, :data_alteracao, :alerta_auditoria)''')
 			self.cursor.execute(codigo_SQL, dados)
 			demanda_obj._id_demanda = self.cursor.lastrowid
 			dados_especificos = demanda_obj._to_dict_especifico()
@@ -335,7 +331,7 @@ class RepositorioGeral:
 			if demanda_obj._tipo == "INFRAESTRUTURA":
 				SQL_filha = ('''INSERT INTO demanda_infraestrutura(id_demanda, custo_estimado, id_escola) VALUES (:id_demanda, :custo_estimado, :id_escola)''')
 			elif demanda_obj._tipo =="PEDAGOGICA":
-				SQL_filha = ('''INSERT INTO demanda_pedagogica(id_demanda, indice_lacuna, frequencia_apurada, id_turma, disciplina_alvo, id_professor, qtd_alunos_risco) VALUES (:id_demanda, :indice_lacuna, :frequencia_apurada, :id_turma, :disciplina_alvo, :id_professor, :qtd_alunos_risco)''')
+				SQL_filha = ('''INSERT INTO demanda_pedagogica(id_demanda, id_turma, frequencia_apurada,  disciplina_alvo, id_professor, relatorio_alunos, indice_lacuna) VALUES (:id_demanda, :id_turma, :frequencia_apurada, :disciplina_alvo, :id_professor, :relatorio_alunos, :indice_lacuna)''')
 			if SQL_filha:
 				self.cursor.execute(SQL_filha, dados_especificos)
 			self.connect.commit()
@@ -350,11 +346,19 @@ class RepositorioGeral:
 			busca_tupla_sql = ('''SELECT * FROM usuario WHERE cpf = (:cpf)''')
 			self.cursor.execute(busca_tupla_sql, {"cpf": cpf_busca})
 			tupla_sql = self.cursor.fetchone()
+			usuario_obj = None
 			if tupla_sql:
-				usuario_obj = Usuario(tupla_sql[0], tupla_sql[2], tupla_sql[1], tupla_sql[3], tupla_sql[4], tupla_sql[5], tupla_sql[6], tupla_sql[9], tupla_sql[7], tupla_sql[8])
-				return usuario_obj
-			else:
-				return None
+				tipo = tupla_sql[9]
+				agrs = (tupla_sql[0], tupla_sql[2], tupla_sql[1], tupla_sql[3], tupla_sql[4], tupla_sql[5], tupla_sql[6], tupla_sql[9], tupla_sql[7], tupla_sql[8])
+				if tipo == "SECRETARIO":
+					usuario_obj = Secretario(*agrs)
+				elif tipo == "GESTOR":
+					usuario_obj = Gestor(*agrs)
+				elif tipo == "PROFESSOR":
+					usuario_obj = Professor(*agrs)
+				elif tipo == "ALUNO":
+					usuario_obj = Aluno(*agrs)
+			return usuario_obj
 		except Exception as e:
 			print(f"❌ Erro no banco: {e}")
 			raise ValueError("Erro ao buscar usuário por CPF no banco de dados.")
@@ -625,4 +629,85 @@ class RepositorioGeral:
 			print(f"❌ Erro no banco: {e}")
 			raise ValueError("Erro ao listar notas por turma no banco de dados.")
 		
+	def buscar_diario_por_id(self, id_busca):
+		try:
+			busca_tupla_sql = ('''SELECT * FROM diario JOIN professor ON diario.id_professor = professor.id_usuario JOIN usuario ON professor.id_usuario = usuario.id_usuario WHERE diario.id_diario = (:id_diario)''')
+			self.cursor.execute(busca_tupla_sql, {"id_diario": id_busca})
+			tupla_sql = self.cursor.fetchone()
+			if tupla_sql:
+				diario_obj = Diario(tupla_sql[0], tupla_sql[4], tupla_sql[14], tupla_sql[5], tupla_sql[1], tupla_sql[2], tupla_sql[3])
+				return diario_obj
+			else:
+				return None
+		except Exception as e:
+			print(f"❌ Erro no banco: {e}")
+			raise ValueError("Erro ao buscar diário no banco de dados.")
+
+	def listar_diario_por_turma(self, id_turma):
+		try:
+			lista_diarios_sql = ('''SELECT * FROM diario JOIN professor ON diario.id_professor = professor.id_usuario JOIN usuario ON professor.id_usuario = usuario.id_usuario JOIN turma ON diario.id_turma = turma.id_turma WHERE turma.id_turma = (:id_turma)''')
+			self.cursor.execute(lista_diarios_sql, {"id_turma": id_turma})
+			tuplas_diario = self.cursor.fetchall()
+			diarios_obj = []
+			for tupla in tuplas_diario:
+				diario_obj = Diario(tupla[0], tupla[4], tupla[14], tupla[5], tupla[1], tupla[2], tupla[3])
+				diarios_obj.append(diario_obj)
+			return diarios_obj
+		except Exception as e:
+			print(f"❌ Erro no banco: {e}")
+			raise ValueError("Erro ao listar diário por turma no banco de dados.")	
+	def listar_diario_por_professor(self, id_professor):
+		try:
+			lista_diarios_sql = ('''SELECT * FROM diario JOIN professor ON diario.id_professor = professor.id_usuario JOIN usuario ON professor.id_usuario = usuario.id_usuario WHERE professor.id_usuario = (:id_professor)''')
+			self.cursor.execute(lista_diarios_sql, {"id_professor": id_professor})
+			tuplas_diario = self.cursor.fetchall()
+			diarios_obj = []
+			for tupla in tuplas_diario:
+				diario_obj = Diario(tupla[0], tupla[4], tupla[14], tupla[5], tupla[1], tupla[2], tupla[3])
+				diarios_obj.append(diario_obj)
+			return diarios_obj
+		except Exception as e:
+			print(f"❌ Erro no banco: {e}")
+			raise ValueError("Erro ao listar diário por professor no banco de dados.")
+		
+	def buscar_frequencia_por_id(self, id_busca):
+		try:
+			busca_tupla_sql = ('''SELECT * FROM frequencia JOIN aluno ON frequencia.id_aluno = aluno.id_usuario JOIN usuario ON aluno.id_usuario = usuario.id_usuario JOIN diario ON frequencia.id_diario = diario.id_diario WHERE frequencia.id_frequencia = (:id_frequencia)''')
+			self.cursor.execute(busca_tupla_sql, {"id_frequencia": id_busca})
+			tupla_sql = self.cursor.fetchone()
+			if tupla_sql:
+				frequencia_obj = Frequencia(tupla_sql[0], tupla_sql[2], tupla_sql[9], tupla_sql[3], tupla_sql[1])
+				return frequencia_obj
+			else:
+				return None
+		except Exception as e:
+			print(f"❌ Erro no banco: {e}")
+			raise ValueError("Erro ao buscar frequência no banco de dados.")
 	
+	def listar_frequencia_por_aluno(self, id_aluno):
+		try:
+			lista_frequencias_sql = ('''SELECT * FROM frequencia JOIN aluno ON frequencia.id_aluno = aluno.id_usuario JOIN usuario ON aluno.id_usuario = usuario.id_usuario JOIN diario ON frequencia.id_diario = diario.id_diario WHERE aluno.id_usuario = (:id_aluno)''')
+			self.cursor.execute(lista_frequencias_sql, {"id_aluno": id_aluno})
+			tuplas_frequencia = self.cursor.fetchall()
+			frequencias_obj = []
+			for tupla in tuplas_frequencia:
+				frequencia_obj = Frequencia(tupla[0], tupla[2], tupla[9], tupla[3], tupla[1])
+				frequencias_obj.append(frequencia_obj)
+			return frequencias_obj
+		except Exception as e:
+			print(f"❌ Erro no banco: {e}")
+			raise ValueError("Erro ao listar frequência por aluno no banco de dados.")
+	
+	def listar_frequencia_por_diario(self, id_diario):
+		try:
+			lista_frequencias_sql = ('''SELECT * FROM frequencia JOIN aluno ON frequencia.id_aluno = aluno.id_usuario JOIN usuario ON aluno.id_usuario = usuario.id_usuario JOIN diario ON frequencia.id_diario = diario.id_diario WHERE diario.id_diario = (:id_diario)''')
+			self.cursor.execute(lista_frequencias_sql, {"id_diario": id_diario})
+			tuplas_frequencia = self.cursor.fetchall()
+			frequencias_obj = []
+			for tupla in tuplas_frequencia:
+				frequencia_obj = Frequencia(tupla[0], tupla[2], tupla[9], tupla[3], tupla[1])
+				frequencias_obj.append(frequencia_obj)
+			return frequencias_obj
+		except Exception as e:
+			print(f"❌ Erro no banco: {e}")
+			raise ValueError("Erro ao listar frequência por diário no banco de dados.")

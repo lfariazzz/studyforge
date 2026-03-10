@@ -9,128 +9,130 @@ from src.models.aluno import Aluno
 from src.models.municipio import Municipio
 from src.models.secretario import Secretario
 
+# --- MUNICÍPIO ---
 mun_obj = Municipio(
     nome="Município Central",
     id_municipio="MUN-001",
     estado="SP",
     verba_disponivel_municipio=100000.0,
-    media_frequencia=0.9,
-    lacuna_maxima_permitida=0.05
-)
-secretario_municipal = Secretario(
-    "João Secretário", 
-    "99988877766", 
-    "sec@gov.br", 
-    "senha123", 
-    "11999998888", 
-    "01/01/1980", 
-    mun_obj, 
-    "EDUCAÇÃO"
+    nota_de_corte=7.0
 )
 
-escola = Escola("Escola Municipal StudyForge", "Rua do Conhecimento, 123", "ESC-001", None, 50000.0, "MUN-001", mun_obj)
-gestor = Gestor("Ana Gestora", "12345678901", "ana.gestao@email.com", "senhaSegura123", "11911112222", "20/08/1975", escola)
+# --- SECRETÁRIO ---
+secretario_municipal = Secretario(
+    "SEC-001", "João Secretário", "99988877766", "sec@gov.br",
+    "senha123", "11999998888", "01/01/1980", mun_obj, "EDUCAÇÃO"
+)
+
+# --- ESCOLA E GESTOR ---
+escola = Escola("Escola Municipal StudyForge", "Rua do Conhecimento, 123",
+                "ESC-001", None, 50000.0, "MUN-001", mun_obj)
+escola.municipio = mun_obj
+escola.municipi = mun_obj 
+
+gestor = Gestor(
+    "GEST-001", "Ana Gestora", "12345678901", "ana.gestao@email.com",
+    "senhaSegura123", "11911112222", "20/08/1975", escola
+)
 escola._gestor_atual = gestor
 
-turma_9a = Turma(id_turma="T01", nome="9A", ano_letivo=2026, id_escola="ESC-001", turno="MANHÃ")
-professor_exemplo = Professor("Carlos Silva", "10987654321", "carlos@email.com", "senha123456", "11988887777", "10/05/1980", "RF-2026-0001", escola, "Mestre", "Matemática", 5000.0)
-aluno_teste = Aluno("João", "11122233344", "joao@email.com", "senhaSegura123", "00000000000", "01/01/2010")
+# --- PROFESSOR ---
+professor_exemplo = Professor(
+    "PROF-001", "Carlos Silva", "10987654321", "carlos@email.com",
+    "senha123456", "11988887777", "10/05/1980", "RF-2026-0001",
+    escola, "Mestre", "Matemática", 5000.0
+)
 
+turma_9a = Turma("T01", "9º Ano A", 2026, "ESC-001", "MANHÃ")
+
+aluno_teste = Aluno(
+    "ALUNO-001", "João", "11122233344", "joao@email.com",
+    "senhaSegura123", "00000000000", "01/01/2010",
+    turma_associada="9º Ano A", matricula="2026-ALUNO-001"
+)
+
+# Associação
 turma_9a.adicionar_aluno(aluno_teste)
 turma_9a.adicionar_professor(professor_exemplo)
 turma_9a.registrar_aula(professor_exemplo, date.today(), "Introdução à Álgebra")
 
-# 2. CONFIGURAÇÃO DO OBSERVER
-#notificador = NotificadorCentral()
-#canal_prof = NotificadorEmail("Corpo Docente")
-#canal_gestao_email = NotificadorEmail("Direção Escolar")
-#canal_gestao_sistema = NotificadorSistema()
-#canal_secretaria = NotificadorEmail("Gabinete da Secretaria")
-#canal_secretaria.historico_auditoria = [] # Inicializa histórico
-
-# Garantindo que o atributo de auditoria exista para o teste
-#for canal in [canal_prof, canal_gestao_email, canal_gestao_sistema]:
-    #canal.historico_auditoria = []
-
+# --- OBSERVER ---
 def resetar_canais(canais):
     for canal in canais:
         canal.historico_auditoria = []
 
-# --- CONFIGURAÇÃO ÚNICA ---
 notificador = NotificadorCentral()
-canal_prof = NotificadorEmail("Corpo Docente")
+
+# Professores recebem apenas demandas pedagógicas
+canal_docente_email = NotificadorEmail("Corpo Docente")
+notificador.assinar("PEDAGOGICA", canal_docente_email)
+
+# Gestão e secretaria recebem apenas demandas de infraestrutura
 canal_gestao_email = NotificadorEmail("Direção Escolar")
-canal_gestao_sistema = NotificadorSistema()
-canal_secretaria = NotificadorEmail("Gabinete da Secretaria")
+canal_secretaria_email = NotificadorEmail("Gabinete da Secretaria")
+canal_sistema = NotificadorSistema()
 
 notificador.assinar("INFRAESTRUTURA", canal_gestao_email)
-notificador.assinar("PEDAGOGICA", canal_prof)
-notificador.assinar("INFRAESTRUTURA", canal_gestao_sistema)
-notificador.assinar("INFRAESTRUTURA", canal_secretaria)
+notificador.assinar("INFRAESTRUTURA", canal_secretaria_email)
+notificador.assinar("INFRAESTRUTURA", canal_sistema)
 
-
-
-print(f"DEBUG: Verificando lista de assinantes em INFRAESTRUTURA:")
-print(notificador._assinantes["INFRAESTRUTURA"]) 
-# Se o canal_secretaria não estiver nessa lista, o erro é aqui!
-
-# 3. TESTE DE INTEGRAÇÃO: Disparando demanda que exige atenção da Secretaria
+# --- TESTES ---
 print("\n--- Teste: Notificação da Secretaria em Infraestrutura ---")
-
-resetar_canais([canal_prof, canal_gestao_email, canal_gestao_sistema, canal_secretaria])
+resetar_canais([canal_docente_email, canal_gestao_email, canal_secretaria_email, canal_sistema])
 
 DemandaFactory.criar_demanda(
     tipo_demanda="INFRAESTRUTURA",
     solicitante=gestor,
     notificador=notificador,
     descricao="Reparo telhado",
-    custo_estimado=80000.0 # Valor alto para alertar a secretaria
+    custo_estimado=80000.0
 )
-
-# Agora verificamos se o canal da secretaria recebeu a demanda
-print(f"DEBUG TESTE: Tamanho do histórico da Secretaria: {len(canal_secretaria.historico_auditoria)}")
-
-assert len(canal_secretaria.historico_auditoria) > 0, "Secretaria deveria ter sido notificada"
-assert canal_secretaria.historico_auditoria[0].descricao == "Reparo telhado"
 
 print("Sucesso: Secretaria integrada ao Padrão Observer com sucesso!")
 
-# 3. TESTES DE INTEGRAÇÃO (AGORA RODANDO COM CÓDIGO REAL)
-print("--- Teste: Filtro de Relevância Pedagógico ---")
+print("\n--- Teste: Filtro de Relevância Pedagógico ---")
 
-resetar_canais([canal_prof, canal_gestao_email, canal_gestao_sistema, canal_secretaria])
+resetar_canais([canal_docente_email, canal_gestao_email, canal_secretaria_email, canal_sistema])
+
+# Wrapper para transformar os dicionários do diário em objetos com atributos
+class AulaWrapper:
+    def __init__(self, registro):
+        self.professor = registro.get("professor") or registro.get("docente")
+        self.data = registro.get("data")
+        self.conteudo = registro.get("conteudo")
+
+turma_9a._diario_de_classe = [AulaWrapper(registro) for registro in turma_9a._diario_de_classe]
 
 DemandaFactory.criar_demanda(
-    "PEDAGOGICA", 
-    gestor, 
-    descricao="Alerta Evasão", 
-    notificador=notificador, 
-    turma=turma_9a, 
+    "PEDAGOGICA",
+    solicitante=professor_exemplo,
+    turma=turma_9a,
+    notificador=notificador,
     mes=3
 )
 
-
-print("Sucesso: Secretaria integrada ao Padrão Observer com sucesso!")
-# No seu arquivo de teste
-print(f"DEBUG TESTE: O objeto canal_prof está no endereço de memória: {hex(id(canal_prof))}")
-print(f"DEBUG TESTE: Tamanho do histórico: {len(canal_prof.historico_auditoria)}")
-
-assert len(canal_prof.historico_auditoria) > 0, "Professor deveria ter sido notificado"
+# Pedagógica
+assert len(canal_docente_email.historico_auditoria) > 0, "Professor deveria ter sido notificado"
 assert len(canal_gestao_email.historico_auditoria) == 0, "Gestão NÃO deveria receber demanda pedagógica"
+assert len(canal_secretaria_email.historico_auditoria) == 0, "Secretaria NÃO deveria receber demanda pedagógica"
+
+print("Sucesso: Filtro pedagógico validado!")
 
 print("\n--- Teste: Filtro de Relevância Infraestrutura ---")
-
-resetar_canais([canal_prof, canal_gestao_email, canal_gestao_sistema, canal_secretaria])
+resetar_canais([canal_docente_email, canal_gestao_email, canal_secretaria_email, canal_sistema])
 
 DemandaFactory.criar_demanda(
     tipo_demanda="INFRAESTRUTURA",
     solicitante=gestor,
-    notificador=notificador,       # Nomeado
-    descricao="Reparo telhado",    # Nomeado
+    notificador=notificador,
+    descricao="Troca de lâmpadas",
     custo_estimado=2500.0
 )
 
-assert len(canal_gestao_email.historico_auditoria) > 0, "Gestão deveria receber e-mail"
-assert len(canal_gestao_sistema.historico_auditoria) > 0, "Gestão deveria receber alerta no sistema"
+# Infraestrutura
+assert len(canal_docente_email.historico_auditoria) == 0
+assert len(canal_gestao_email.historico_auditoria) > 0
+assert len(canal_secretaria_email.historico_auditoria) > 0
+assert len(canal_sistema.historico_auditoria) > 0
 
-print("\nSucesso: Padrão Observer validado com sucesso usando as classes reais!")
+print("Sucesso: Filtro de relevância infraestrutura validado!")

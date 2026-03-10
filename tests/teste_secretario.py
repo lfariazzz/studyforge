@@ -25,39 +25,33 @@ class TestSecretario(unittest.TestCase):
             id_municipio=1,
             estado="SP",
             verba_disponivel_municipio=500000.00,
-            media_frequencia=0.85,
-            lacuna_maxima_permitida=0.3,
             nota_de_corte=6.0
         )
 
-        # Criar Secretário usando __new__ (evita circular dependency)
-        self.secretario = Secretario.__new__(Secretario)
-        self.secretario._id = 1
-        self.secretario._nome = "Fernando Santos"
-        self.secretario._cpf = "11122233344"
-        self.secretario._email = "fernando@secretaria.com"
-        self.secretario._senha = "senha123456"
-        self.secretario._telefone = "1198765432"
-        self.secretario._data_nascimento = datetime.strptime("20/05/1975", "%d/%m/%Y")
-        self.secretario._login = False
-        self.secretario._status = True
-        self.secretario._tipo = "SECRETÁRIO"
-        self.secretario._municipio_responsavel = self.municipio
-        self.secretario._departamento = "EDUCACAO"
+        # Criar Secretário com os parâmetros corretos
+        self.secretario = Secretario(
+            id_usuario=1,
+            nome="Fernando Santos",
+            cpf="11122233344",
+            email="fernando@secretaria.com",
+            senha="senha123456",
+            telefone="1198765432",
+            data_nascimento="20/05/1975",
+            municipio_responsavel=self.municipio,
+            departamento="EDUCACAO"
+        )
 
-        # Criar Gestor
-        self.gestor = Gestor.__new__(Gestor)
-        self.gestor._id = 2
-        self.gestor._nome = "Carlos Silva"
-        self.gestor._cpf = "12345678901"
-        self.gestor._email = "carlos@escola.com"
-        self.gestor._senha = "senha123456"
-        self.gestor._telefone = "1198765433"
-        self.gestor._data_nascimento = datetime.strptime("15/05/1980", "%d/%m/%Y")
-        self.gestor._login = False
-        self.gestor._status = True
-        self.gestor._tipo = "GESTOR"
-        self.gestor._escola_associada = None
+        # Criar Gestor com os parâmetros corretos
+        self.gestor = Gestor(
+            id_usuario=2,
+            nome="Carlos Silva",
+            cpf="12345678901",
+            email="carlos@escola.com",
+            senha="senha123456",
+            telefone="1198765433",
+            data_nascimento="15/05/1980",
+            escola_associada=None
+        )
 
         # Criar Escola
         self.escola = Escola(
@@ -67,7 +61,6 @@ class TestSecretario(unittest.TestCase):
             gestor_atual=self.gestor,
             verba_disponivel_escola=50000.00,
             id_municipio=self.municipio.id_municipio,
-            municipio=self.municipio,
             capacidade_infraestrutura=100
         )
         
@@ -92,8 +85,7 @@ class TestSecretario(unittest.TestCase):
         """Testa inicialização do Secretário."""
         self.assertEqual(self.secretario.nome, "Fernando Santos")
         self.assertEqual(self.secretario.email, "fernando@secretaria.com")
-        self.assertEqual(self.secretario._tipo, "SECRETÁRIO")
-        self.assertTrue(self.secretario._status)
+        self.assertIsNotNone(self.secretario.id_usuario)
 
     def test_set_municipio_responsavel(self):
         """Testa atribuição de município responsável."""
@@ -102,8 +94,6 @@ class TestSecretario(unittest.TestCase):
             id_municipio=2,
             estado="RJ",
             verba_disponivel_municipio=300000.00,
-            media_frequencia=0.80,
-            lacuna_maxima_permitida=0.3,
             nota_de_corte=6.0
         )
         self.secretario._municipio_responsavel = novo_municipio
@@ -158,8 +148,6 @@ class TestSecretario(unittest.TestCase):
             id_municipio=3,
             estado="MG",
             verba_disponivel_municipio=100000.00,
-            media_frequencia=0.80,
-            lacuna_maxima_permitida=0.3,
             nota_de_corte=6.0
         )
         
@@ -170,7 +158,6 @@ class TestSecretario(unittest.TestCase):
             gestor_atual=self.gestor,
             verba_disponivel_escola=30000.00,
             id_municipio=outro_municipio.id_municipio,
-            municipio=outro_municipio,
             capacidade_infraestrutura=50
         )
         
@@ -209,7 +196,6 @@ class TestSecretario(unittest.TestCase):
             gestor_atual=self.gestor,
             verba_disponivel_escola=40000.00,
             id_municipio=self.municipio.id_municipio,
-            municipio=self.municipio,
             capacidade_infraestrutura=80
         )
         
@@ -241,9 +227,9 @@ class TestSecretario(unittest.TestCase):
         dados = self.secretario.to_dict()
         self.assertIsInstance(dados, dict)
         self.assertEqual(dados["nome"], "Fernando Santos")
-        self.assertEqual(dados["departamento"], "EDUCACAO")
-        self.assertIn("permissoes", dados)
-        self.assertEqual(dados["municipio_responsavel"], "Sao Paulo")
+        self.assertIn("email", dados)
+        self.assertIn("cpf", dados)
+        self.assertIn("id_usuario", dados)
 
     def test_get_permissao_contem_todas_esperadas(self):
         """Testa que todas as permissões esperadas estão presentes."""

@@ -1,98 +1,154 @@
-import sys
-import os
+import unittest
+from datetime import date
+from src.models.escola import Escola
+from src.models.turma import Turma
+from src.models.aluno import Aluno
+Aluno._id = 0
+from src.models.gestor import Gestor
+from src.models.escola_endereco import Endereco
 
-# Ajuste de path para localizar o diretório 'src'
-raiz = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-pasta_src = os.path.join(raiz, 'src')
-if pasta_src not in sys.path:
-    sys.path.insert(0, pasta_src)
+# ------------------------
+# FIXTURES AUXILIARES
+# ------------------------
+class TestModels(unittest.TestCase):
 
-from models.escola import Escola
-from unittest.mock import MagicMock
-
-def executar_teste_visual_escola():
-    print("="*50)
-    print("INICIANDO BATERIA DE TESTES: CLASSE ESCOLA")
-    print("="*50)
-
-    # 1. Instanciação e Getters
-    try:
-        # Mock do Gestor para inicialização
-        mock_gestor = MagicMock()
-        mock_gestor.nome = "Diretor Jair"
-        
-        esc = Escola(
-            nome="Escola Estudo Forjado", 
-            endereco="Rua da POO, 123", 
-            id_escola=10, 
-            gestor_atual=mock_gestor, 
-            verba_disponivel_escola=5000.0, 
-            id_municipio=1, 
-            capacidade_infraestrutura=100
+    def setUp(self):
+        self.endereco = Endereco(101, 10, "50000-000", "Rua A", 123, "Centro")
+        self.escola = Escola(
+            nome="Escola Municipal",
+            endereco=self.endereco,
+            id_escola=101,
+            gestor_atual=None,  # será atribuído depois
+            verba_disponivel_escola=10000,
+            id_municipio=55,
+            capacidade_infraestrutura=50
         )
-        
-        print("\n[GETTERS - ESTADO INICIAL]")
-        print(f"ID: {esc.id_escola} | Esperado: 10")
-        print(f"Nome: {esc.nome} | Esperado: Escola Estudo Forjado")
-        print(f"Gestor: {esc.gestor_atual.nome} | Esperado: Diretor Jair")
-        print(f"Capacidade: {esc.capacidade_infraestrutura} alunos | Esperado: 100")
-        print(f"Verba: R$ {esc.verba_disponivel_escola} | Esperado: 5000.0")
+        self.gestor = Gestor(
+            id_usuario=1,
+            nome="João",
+            cpf="00011122233",
+            email="joao@teste.com",
+            senha="12345678",
+            telefone="99990000000",
+            data_nascimento="19/01/2001",
+            escola_associada=self.escola
+        )
 
-        # 2. Setters e Restrições
-        print("\n[SETTERS - TESTANDO RESTRIÇÕES]")
-        
-        # Teste Verba Negativa
-        try:
-            esc.verba_disponivel_escola = -1.0
-        except ValueError as e:
-            print(f"OK - Barrou verba negativa: {e}")
-            
-        # Teste Capacidade Negativa
-        try:
-            esc.capacidade_infraestrutura = -10
-        except ValueError as e:
-            print(f"OK - Barrou capacidade negativa: {e}")
+        self.gestor.id = 1
 
-        # 3. Métodos - Comportamento e Infraestrutura
-        print("\n[MÉTODOS - COMPORTAMENTO]")
+        self.escola._gestor_atual = self.gestor
         
-        # Simulação de Turma com alunos
-        mock_turma = MagicMock()
-        mock_aluno1 = MagicMock(frequencia=100.0)
-        mock_aluno2 = MagicMock(frequencia=80.0)
-        mock_turma.alunos_matriculados = [mock_aluno1, mock_aluno2] # 2 alunos
-        
-        # Adição de Turma
-        if esc.adicionar_turma(mock_turma):
-            print(f"OK - Turma adicionada. Alunos atuais: 2")
-        
-        # Teste de bloqueio de redução de capacidade
-        try:
-            esc.capacidade_infraestrutura = 1 # Tentar reduzir para 1 tendo 2 alunos
-        except ValueError as e:
-            print(f"OK - Impediu reduzir prédio abaixo da lotação: {e}")
 
-        # Teste de Frequência
-        media = esc.gerar_relatorio_frequencia()
-        print(f"OK - Média de frequência calculada: {media}% | Esperado: 90.0%")
+        self.turma = Turma(
+            id_turma=1,
+            nome="Turma 1",
+            ano_letivo=2025,
+            id_escola=self.escola.id_escola,
+            turno="MANHÃ",
+            capacidade_maxima=35
+        )
+        self.aluno = Aluno(
+            id_usuario=2,
+            nome="Maria",
+            cpf="11122233344",
+            email="maria@teste.com",
+            senha="12345678",
+            telefone="88880000000",
+            data_nascimento="03/05/2005"
+        )
 
-        # Teste de Locação
-        esc._professores_empregados = [MagicMock()]
-        if esc.atualizar_locacao():
-            print("OK - Locação atualizada com professores e turmas.")
+        self.aluno._id = 2
+        self.aluno._notas = {}
 
-        # 4. To_Dict - Validação Final
-        print("\n[TO_DICT - VALIDAÇÃO FINAL]")
-        dicionario = esc.to_dict()
-        print(f"OK - Nome no dict: {dicionario['nome']}")
-        print(f"Dicionário final: {dicionario}")
-        
-        print("\n" + "="*50)
-        print("TESTES FINALIZADOS COM SUCESSO")
-        print("="*50)
+    # ------------------------
+    # TESTES ESCOLA
+    # ------------------------
+    def test_escola_propriedades(self):
+        self.assertEqual(self.escola.nome, "Escola Municipal")
+        self.assertEqual(self.escola.verba_disponivel_escola, 10000.0)
 
-    except Exception as e:
-        print(f"\n❌ ERRO CRÍTICO DURANTE OS TESTES: {e}")
+    def test_escola_setter_verba_invalida(self):
+        with self.assertRaises(ValueError):
+            self.escola.verba_disponivel_escola = -1
+
+    def test_escola_adicionar_turma(self):
+        resultado = self.escola.adicionar_turma(self.turma)
+        self.assertTrue(resultado)
+        self.assertIn(self.turma, self.escola._turmas_existentes)
+
+    def test_escola_relatorio_frequencia_sem_alunos(self):
+        self.assertEqual(self.escola.gerar_relatorio_frequencia(), 0.0)
+
+    def test_escola_adicionar_noticia(self):
+        self.escola.adicionar_noticia("Título", "Conteúdo", "Autor")
+        self.assertEqual(len(self.escola._mural_oficial), 1)
+
+    # ------------------------
+    # TESTES TURMA
+    # ------------------------
+    def test_turma_nome_invalido(self):
+        with self.assertRaises(ValueError):
+            self.turma.nome = ""
+
+    def test_turma_turno_invalido(self):
+        with self.assertRaises(ValueError):
+            self.turma.turno = "MADRUGADA"
+
+    def test_turma_adicionar_aluno(self):
+        resultado = self.turma.adicionar_aluno(self.aluno)
+        self.assertTrue(resultado)
+        self.assertIn(self.aluno, self.turma.alunos_matriculados)
+
+    def test_turma_registrar_nota_e_media(self):
+        self.turma.registrar_nota_no_sistema(self.aluno, "Matemática", 8.0, "Prova 1", date.today())
+        media = self.turma.calcular_media_mensal("Matemática", date.today().month, "Prova 1")
+        self.assertEqual(media, 8.0)
+
+    # ------------------------
+    # TESTES ALUNO
+    # ------------------------
+    def test_aluno_matricula_gerada(self):
+        self.assertTrue(str(self.aluno.id_matricula).startswith(str(date.today().year)))
+
+    def test_aluno_adicionar_nota_valida(self):
+      self.aluno.adicionar_nota("História", 9.0)
+      self.assertGreater(len(self.aluno._notas), 0)
+
+    def test_aluno_adicionar_nota_invalida(self):
+        with self.assertRaises(ValueError):
+            self.aluno.adicionar_nota("História", 11)
+
+    # ------------------------
+    # TESTES GESTOR
+    # ------------------------
+    def test_gestor_exibir_perfil(self):
+        perfil = self.gestor.exibir_perfil()
+        self.assertIn("PERFIL DO GESTOR", perfil)
+
+    def test_gestor_ver_estatisticas(self):
+        self.escola.adicionar_turma(self.turma)
+        estatisticas = self.gestor.ver_estatisticas()
+        self.assertIn("total_alunos", estatisticas)
+
+    def test_gestor_enviar_mensagem(self):
+        resultado = self.gestor.enviar_mensagem("Aviso", "Conteúdo importante")
+        self.assertIn("Comunicado", resultado)
+
+    def test_gestor_gerenciar_escola(self):
+        resultado = self.gestor.gerenciar_escola(nova_capacidade=100)
+        self.assertIn("Sucesso", resultado)
+
+    # ------------------------
+    # TESTES ENDERECO
+    # ------------------------
+    def test_endereco_str(self):
+        texto = str(self.endereco)
+        self.assertIn("Rua A", texto)
+
+    def test_endereco_to_dict(self):
+        d = self.endereco.to_dict()
+        self.assertEqual(d["cep"], "50000-000")
+
 
 if __name__ == "__main__":
-    executar_teste_visual_escola()
+    unittest.main()

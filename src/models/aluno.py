@@ -9,6 +9,21 @@ Herda atributos base de Usuario e gerencia sua vida acadêmica.
 class Aluno(Usuario):
     def __init__(self, id_usuario, nome, cpf, email, senha, telefone, data_nascimento,
                 turma_associada = None, matricula = None):
+        """
+        Inicializa um novo aluno no sistema StudyForge.
+        
+        Args:
+            id_usuario (int): Identificador unico do aluno.
+            nome (str): Nome completo do aluno.
+            cpf (str): CPF do aluno (11 digitos numericos).
+            email (str): Endereco de email do aluno.
+            senha (str): Senha de acesso (minimo 8 caracteres).
+            telefone (str): Numero de telefone (10 ou 11 digitos).
+            data_nascimento (str): Data de nascimento no formato DD/MM/AAAA.
+            turma_associada (Turma, optional): Objeto da turma ou ID da turma. Defaults to None.
+            matricula (str, optional): Matricula do aluno. Se nao informada, e gerada automaticamente
+                                      usando o ano atual e ID do usuario. Defaults to None.
+        """
         super().__init__(id_usuario, nome, cpf, email, senha, telefone, data_nascimento, "ALUNO")
 
         self.turma_associada = turma_associada 
@@ -17,10 +32,10 @@ class Aluno(Usuario):
             self._id_matricula = matricula
         else:
             ano = datetime.now().year
-            self._id_matricula = f"{ano}{self._id}"
+            self._id_matricula = f"{ano}{self._id_usuario}"
 
-        self.notas = []
-        self.presencas = [] 
+        self.notas = {}  # Dicionário público para notas por disciplina (para SQLite)
+        self.presencas = []  # Lista pública para histórico de frequência (para SQLite)
 
     # -----------------
     # GETTERS E SETTERS
@@ -50,7 +65,7 @@ class Aluno(Usuario):
     #implementado por Levi para integração com o src/services/avaliador_frequencia.py (RN02)    
     @property
     def presenca(self):
-        return self._historico_frequencia
+        return self.presencas
 
 
     #requer refatoração, ass:Levi 
@@ -67,7 +82,7 @@ class Aluno(Usuario):
         if total_aulas_turma == 0:
             return 100.0
 
-        presencas = sum(1 for registro in self._historico_frequencia if registro.get('presenca') is True)
+        presencas = sum(1 for registro in self.presencas if registro.get('presenca') is True)
         
         percentual = (presencas / total_aulas_turma) * 100
         return round(percentual, 2)
@@ -77,16 +92,34 @@ class Aluno(Usuario):
     # -------
 
     def get_permissao(self):
-        """Função que retorna as permissões da classe Aluno"""
+        """
+        Retorna as permissoes do aluno no sistema.
+        
+        Returns:
+            list: Lista contendo as permissoes do aluno:
+                  - VISUALIZAR_NOTAS: Acessar boletim escolar
+                  - VER_FREQUENCIA: Consultar historico de frequencia
+                  - VER_NOTICIAS: Acessar mural da escola
+                  - VER_HORARIO: Consultar quadro de horarios
+                  - BAIXAR_MATERIAL: Baixar materiais de aula
+        """
         return ["VISUALIZAR_NOTAS", "VER_FREQUENCIA", "VER_NOTICIAS", "VER_HORARIO", "BAIXAR_MATERIAL"]
         
     
     def ver_frequencia(self):
-        """Retorna o histórico detalhado de datas e presenças."""
-        if not self._historico_frequencia:
+        """
+        Retorna o historico detalhado de frequencia do aluno.
+        
+        Exibe a frequencia percentual atual e lista todas as datas com status
+        de presenca ou falta.
+        
+        Returns:
+            str: Relatorio formatado com frequencia percentual e historico de presencas.
+        """
+        if not self.presencas:
             return "Nenhum registro de frequência encontrado."
         relatorio = [f"Frequência atual: {self.frequencia}%"]
-        for reg in self._historico_frequencia:
+        for reg in self.presencas:
             status = "Presente" if reg['presenca'] else "Faltou"
             relatorio.append(f"{reg['data']}: {status}")
 
@@ -95,7 +128,14 @@ class Aluno(Usuario):
 
     def ver_horario(self):
         """
-        Consulta o quadro de horários/professores da turma associada.
+        Retorna o quadro de horarios e professores da turma associada.
+        
+        Consulta as informacoes da turma e exibe os professores regentes
+        e dados de horario.
+        
+        Returns:
+            str: String formatada contendo nome da turma e lista de professores regentes,
+                 ou mensagem de erro se a turma nao estiver vinculada.
         """
         if not self.turma_associada or isinstance(self.turma_associada, str):
             return "Aluno sem turma vinculada. Horário indisponível."
@@ -111,8 +151,14 @@ class Aluno(Usuario):
 
     def exibir_perfil(self):
         """
-        Implementação do método abstrato da classe Usuario.
-        Retorna uma string formatada com os dados principais do aluno.
+        Exibe o perfil completo do aluno.
+        
+        Implementacao do metodo abstrato da classe Usuario que retorna uma string
+        formatada com os dados principais do aluno, incluindo matricula, turma,
+        status da conta e frequencia geral.
+        
+        Returns:
+            str: String formatada contendo informacoes do perfil do aluno.
         """
         nome_turma = self.turma_associada.nome if hasattr(self.turma_associada, 'nome') else "Não vinculada"
         status_conta = "Ativa" if self._status else "Inativa/Suspensa"
@@ -132,14 +178,21 @@ class Aluno(Usuario):
 
     def visualizar_notas(self):
         """
-        Permite ao aluno visualizar suas notas organizadas por disciplina.
+        Exibe o boletim escolar do aluno com suas notas por disciplina.
+        
+        Retorna uma listagem formatada de todas as disciplinas com suas notas
+        e media calculada por disciplina.
+        
+        Returns:
+            str: Boletim formatado com notas e medias por disciplina,
+                 ou mensagem indicando que nao ha notas lancadas.
         """
-        if not self._notas:
+        if not self.notas:
             return "Nenhuma nota foi lançada no sistema até o momento."
 
         exibicao = [f"--- BOLETIM ESCOLAR: {self.nome} ---"]
         
-        for disciplina, lista_notas in self._notas.items():
+        for disciplina, lista_notas in self.notas.items():
             media = sum(lista_notas) / len(lista_notas) if lista_notas else 0
             notas_str = " | ".join(map(str, lista_notas))
             
@@ -150,19 +203,36 @@ class Aluno(Usuario):
 
     def adicionar_nota(self, disciplina: str, valor: float):
         """
-        Método auxiliar que será chamado pelo professor para inserir notas.
+        Adiciona uma nota do aluno em uma disciplina especifica.
+        
+        Metodo auxiliar chamado pelo professor para inserir notas. Cada disciplina
+        pode ter multiplas notas que serao usadas para calculo de media.
+        
+        Args:
+            disciplina (str): Nome da disciplina.
+            valor (float): Valor da nota (deve estar entre 0 e 10).
+        
+        Raises:
+            ValueError: Se a nota nao estiver no intervalo de 0 a 10.
         """
         if not (0 <= valor <= 10):
             raise ValueError("Erro: A nota deve ser um valor entre 0 e 10.")
         
-        if disciplina not in self._notas:
-            self._notas[disciplina] = []
+        if disciplina not in self.notas:
+            self.notas[disciplina] = []
 
-        self._notas[disciplina].append(valor)
+        self.notas[disciplina].append(valor)
 
     def ver_noticias(self):
         """
-        Consulta o mural de notícias oficial da escola à qual o aluno pertence.
+        Exibe o mural de noticias da escola do aluno.
+        
+        Retorna as noticias publicadas no mural oficial da escola a qual
+        o aluno esta vinculado atraves de sua turma.
+        
+        Returns:
+            str: Mural de noticias formatado com titulos, datas, autores e conteudo,
+                 ou mensagem de erro se o aluno nao estiver vinculado a uma turma.
         """
         if not self.turma_associada or isinstance(self.turma_associada, str):
             return "Aluno sem turma vinculada. Não é possível acessar o mural."
@@ -189,17 +259,42 @@ class Aluno(Usuario):
 
     #refatorado por Levi para implementação da RN02
     def registrar_presenca(self, data: date, presente: bool):
-        """Alimenta o histórico (Data e Booleano)."""
+        """
+        Registra a presenca ou falta do aluno em uma aula.
+        
+        Alimenta o historico de frequencia do aluno com informacoes de data
+        e status de presenca. Utilizado pela interface de diario de classe.
+        
+        Args:
+            data (date): Data da aula.
+            presente (bool): True se o aluno estava presente, False se faltou.
+        
+        Raises:
+            TypeError: Se o parametro presente nao for um booleano.
+        """
         if not isinstance(presente, bool):
             raise TypeError("O status de presença deve ser True ou False.")
         
-        self._historico_frequencia.append({
+        self.presencas.append({
             "data": data,
             "aluno": self.nome,
             "presenca": presente
         })
 
     def baixar_material(self, nome_material):
+        """
+        Faz o download de material de aula postado na turma.
+        
+        Permite que o aluno acesse e baixe materiais de aula que foram
+        postados pela turma a qual esta vinculado.
+        
+        Args:
+            nome_material (str): Nome do material a ser baixado.
+        
+        Returns:
+            str: Mensagem de sucesso com link para download, mensagem de erro
+                 se o aluno nao estiver em turma ou material nao encontrado.
+        """
         if not self.turma_associada:
             return "Você não está vinculado a nenhuma turma"
         
@@ -210,10 +305,18 @@ class Aluno(Usuario):
         return "Material não encontrado na sua turma"
     
     def to_dict_especifico(self):
-        """Exporta os dados do aluno em formato de dicionário."""
+        """
+        Exporta os dados especificos do aluno em formato de dicionario.
+        
+        Retorna um dicionario contendo apenas os atributos especificos da classe Aluno
+        (diferente do metodo herdado to_dict()).
+        
+        Returns:
+            dict: Dicionario com id_usuario, matricula e id_turma do aluno.
+        """
         return{
             "id_usuario": self._id_usuario,
+            "id_turma": self._turma_associada._id_turma if self._turma_associada else None,
             "matricula": self._id_matricula,
-            "id_turma": self._turma_associada._id_turma if self._turma_associada else None
         }
     

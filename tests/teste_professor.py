@@ -9,6 +9,7 @@ from src.models.professor import Professor
 # --- MOCKS PARA SIMULAR DEPENDÊNCIAS ---
 class MockEscola:
     def __init__(self):
+        self.id_escola = 1
         self.nome = "Escola Técnica Industrial"
 
 class MockAluno:
@@ -46,7 +47,8 @@ class TestProfessor(unittest.TestCase):
     def setUp(self):
         self.escola = MockEscola()
         self.professor = Professor(
-            nome="Roberto Oliveira", # Removi o "Dr." para evitar o ponto (.)
+            id_usuario=1,
+            nome="Roberto Oliveira",
             cpf="999.888.777-66",
             email="roberto.prof@escola.com",
             senha="senha123",
@@ -128,10 +130,10 @@ class TestProfessor(unittest.TestCase):
 
     def test_to_dict_professor(self):
         """Valida a exportação dos dados para dicionário."""
-        dados = self.professor.to_dict()
+        dados = self.professor.to_dict_especifico()
         self.assertEqual(dados["registro_funcional"], "RF-2026-1234")
         self.assertEqual(dados["titulacao"], "Doutor")
-        self.assertEqual(dados["escola_nome"], "Escola Técnica Industrial")
+        self.assertEqual(dados["area_atuacao"], "Física")
 
 if __name__ == '__main__':
     unittest.main()
