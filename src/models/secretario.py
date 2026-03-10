@@ -17,7 +17,7 @@ class Secretario(Usuario):
             municipio_responsavel (Municipio): Objeto do municipio administrado pelo secretario.
             departamento (str): Departamento de atuacao (ex: EDUCAÇÃO, FINANÇAS).
         """
-        super().__init__(id_usuario, nome, cpf, email, senha, telefone, data_nascimento, "SECRETÁRIO")
+        super().__init__(id_usuario, nome, cpf, email, senha, telefone, data_nascimento, "SECRETARIO")
 
         self.municipio_responsavel = municipio_responsavel
         self.departamento = departamento
@@ -433,6 +433,6 @@ class Secretario(Usuario):
         return{
             "id_usuario": self._id_usuario,
             "id_municipio": self.municipio_responsavel.id_municipio if self.municipio_responsavel else None,
-            "departamento": self._departamento,
+            "departamento": self.departamento,
             
         }

@@ -595,17 +595,21 @@ class RepositorioGeral:
 		
 	def buscar_turma_por_id(self, id_busca):
 		try:
-			busca_tupla_sql = ('''SELECT * FROM turma JOIN escola ON turma.id_escola = escola.id_escola WHERE turma.id_turma = (:id_turma)''')
-			self.cursor.execute(busca_tupla_sql, {"id_turma": id_busca})
-			tupla_sql = self.cursor.fetchone()
-			if tupla_sql:
-				turma_obj = Turma(tupla_sql[0], tupla_sql[1], tupla_sql[2], tupla_sql[5], tupla_sql[7], tupla_sql[3], tupla_sql[4])
-				return turma_obj
-			else:
-				return None
-		except Exception as e:
-			print(f"❌ Erro no banco: {e}")
-			raise ValueError("Erro ao buscar turma no banco de dados.")
+			self.connect.row_factory = sqlite3.Row
+			cursor = self.connect.cursor()
+			cursor.execute("SELECT * FROM turma WHERE id_turma = ?", (id_busca,))
+			row = cursor.fetchone()
+			if not row: return None
+
+			from src.models.turma import Turma
+			escola_obj = self.buscar_escola_por_id(row["id_escola"])
+            
+			return Turma(
+				id_turma=row["id_turma"], nome=row["nome"], ano_letivo=row["ano_letivo"], id_escola=row["id_escola"],
+				escola=escola_obj, turno=row["turno"], capacidade_maxima=row["capacidade_maxima"]
+			)
+		finally:
+			self.connect.row_factory = None
 		
 	def listar_turmas(self):
 		try:
