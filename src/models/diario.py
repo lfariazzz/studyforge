@@ -9,10 +9,10 @@ class Diario:
         :param disciplina: (str) Nome da disciplina (ex: Matemática).
         :param data: (datetime) Objeto de data e hora da aula.
         """
-        self.__id_diario = id_diario
-        self.__id_turma = id_turma
+        self._id_diario = id_diario
+        self._id_turma = id_turma
         self.disciplina = disciplina
-        self.__id_professor = id_professor
+        self._id_professor = id_professor
         self._professor = professor
         self.conteudo = conteudo 
 
@@ -24,24 +24,24 @@ class Diario:
 
     @property
     def id_diario(self):
-        return self.__id_diario
+        return self._id_diario
 
     @property
     def id_turma(self):
-        return self.__id_turma
+        return self._id_turma
 
     @property 
     def id_professor(self):
-        return self.__id_professor
+        return self._id_professor
     
     def to_dict(self):
         """Útil para salvar o registro da aula no banco SQL"""
         return {
-            "id_diario": self.__id_diario,
+            "id_diario": self._id_diario,
             "disciplina": self.disciplina,
             "data": self.data.strftime("%Y-%m-%d"),
             "conteudo": self.conteudo ,
             "id_professor": self.id_professor,
-            "id_turma": self.__id_turma,
+            "id_turma": self._id_turma,
 
         }

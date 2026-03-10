@@ -1,5 +1,7 @@
 from src.models.usuario import Usuario
 from datetime import date, datetime
+from src.models.frequencia import Frequencia
+from src.models.nota import Nota
 
 """
 Representa a entidade Aluno conforme o diagrama UML.
@@ -34,8 +36,8 @@ class Aluno(Usuario):
             ano = datetime.now().year
             self._id_matricula = f"{ano}{self._id_usuario}"
 
-        self.notas = {}  # Dicionário público para notas por disciplina (para SQLite)
-        self.presencas = []  # Lista pública para histórico de frequência (para SQLite)
+        self.notas = [] 
+        self._presencas = []  
 
     # -----------------
     # GETTERS E SETTERS
@@ -64,28 +66,30 @@ class Aluno(Usuario):
 
     #implementado por Levi para integração com o src/services/avaliador_frequencia.py (RN02)    
     @property
-    def presenca(self):
-        return self.presencas
+    def presencas(self):
+        return self._presencas
 
 
     #requer refatoração, ass:Levi 
     @property
     def frequencia(self):
         """
-        Calcula a frequência baseada no total de aulas da TURMA.
+        Calcula a frequência real comparando as presenças com o 
+        total de aulas ministradas (registradas nos diários da turma).
         """
-        
-        if not self.turma_associada or not hasattr(self.turma_associada, '_diario_de_classe'):
+        if not self.turma_associada or not hasattr(self.turma_associada, 'diarios'):
             return 100.0
-        total_aulas_turma = len(self.turma_associada._diario_de_classe)
         
-        if total_aulas_turma == 0:
+        # O total de aulas vem do Diário da Turma
+        total_aulas_ministradas = len(self.turma_associada.diarios)
+        
+        if total_aulas_ministradas == 0:
             return 100.0
 
-        presencas = sum(1 for registro in self.presencas if registro.get('presenca') is True)
+        # Conta quantos objetos Frequencia têm status "PRESENTE"
+        presencas_confirmadas = sum(1 for f in self.presencas if f.status == "PRESENTE")
         
-        percentual = (presencas / total_aulas_turma) * 100
-        return round(percentual, 2)
+        return round((presencas_confirmadas / total_aulas_ministradas) * 100, 2)
         
     # -------
     # MÉTODOS
@@ -118,10 +122,12 @@ class Aluno(Usuario):
         """
         if not self.presencas:
             return "Nenhum registro de frequência encontrado."
+            
         relatorio = [f"Frequência atual: {self.frequencia}%"]
-        for reg in self.presencas:
-            status = "Presente" if reg['presenca'] else "Faltou"
-            relatorio.append(f"{reg['data']}: {status}")
+        
+        for freq in self.presencas:
+            status = "✅ Presente" if freq.status == "PRESENTE" else "❌ Falta"
+            relatorio.append(f"Aula ID {freq.id_diario}: {status}")
 
         return "\n".join(relatorio)
     
@@ -190,18 +196,20 @@ class Aluno(Usuario):
         if not self.notas:
             return "Nenhuma nota foi lançada no sistema até o momento."
 
-        exibicao = [f"--- BOLETIM ESCOLAR: {self.nome} ---"]
-        
-        for disciplina, lista_notas in self.notas.items():
-            media = sum(lista_notas) / len(lista_notas) if lista_notas else 0
-            notas_str = " | ".join(map(str, lista_notas))
-            
-            exibicao.append(f"🔹 {disciplina}: {notas_str} (Média: {media:.2f})")
+        boletim = {}
+        for n in self.notas:
+            if n.disciplina not in boletim:
+                boletim[n.disciplina] = []
+            boletim[n.disciplina].append(n.valor)
 
-        exibicao.append("-" * 40)
+        exibicao = [f"--- BOLETIM ESCOLAR: {self.nome} ---"]
+        for disc, valores in boletim.items():
+            media = sum(valores) / len(valores)
+            exibicao.append(f"🔹 {disc}: {' | '.join(map(str, valores))} (Média: {media:.2f})")
+        
         return "\n".join(exibicao)
 
-    def adicionar_nota(self, disciplina: str, valor: float):
+    def adicionar_nota(self, nota: Nota):
         """
         Adiciona uma nota do aluno em uma disciplina especifica.
         
@@ -215,13 +223,10 @@ class Aluno(Usuario):
         Raises:
             ValueError: Se a nota nao estiver no intervalo de 0 a 10.
         """
-        if not (0 <= valor <= 10):
+        if not (0 <= nota.valor <= 10):
             raise ValueError("Erro: A nota deve ser um valor entre 0 e 10.")
         
-        if disciplina not in self.notas:
-            self.notas[disciplina] = []
-
-        self.notas[disciplina].append(valor)
+        self.notas.append(nota)
 
     def ver_noticias(self):
         """
@@ -258,7 +263,7 @@ class Aluno(Usuario):
         return "\n".join(exibicao)
 
     #refatorado por Levi para implementação da RN02
-    def registrar_presenca(self, data: date, presente: bool):
+    def registrar_presenca(self, presente: Frequencia):
         """
         Registra a presenca ou falta do aluno em uma aula.
         
@@ -272,14 +277,10 @@ class Aluno(Usuario):
         Raises:
             TypeError: Se o parametro presente nao for um booleano.
         """
-        if not isinstance(presente, bool):
-            raise TypeError("O status de presença deve ser True ou False.")
+        if not isinstance(presente, Frequencia):
+            raise TypeError("O status de presença deve ser da classe Frequencia.")
         
-        self.presencas.append({
-            "data": data,
-            "aluno": self.nome,
-            "presenca": presente
-        })
+        self._presencas.append(presente)
 
     def baixar_material(self, nome_material):
         """
