@@ -22,57 +22,42 @@ class SistemaAutenticacao:
         self.sessao = GerenciadorSessao.obter_instancia()
     
     def fazer_login(self, cpf: str, senha: str) -> Tuple[bool, str]:
-        """
-        Realiza o login do usuário.
-        
-        Args:
-            cpf: CPF do usuário
-            senha: Senha do usuário
-        
-        Returns:
-            Tupla (sucesso: bool, mensagem: str)
-        """
         try:
-            # Validações básicas
+            # Validações básicas (FormatadorCLI e ValidadorCLI mantidos)
             if not ValidadorCLI.validar_cpf(cpf):
                 return False, FormatadorCLI.erro("CPF inválido. Use o formato XXX.XXX.XXX-XX")
             
-            if not senha or len(senha) < 8:
-                return False, FormatadorCLI.erro("Senha deve ter pelo menos 8 caracteres")
-            
-            # Busca usuário no banco
-            usuario_data = self.repositorio.buscar_usuario_por_cpf(cpf)
-            
-            if not usuario_data:
-                return False, FormatadorCLI.erro("Usuário não encontrado")
-            
-            # Verifica se usuário está ativo
-            if not usuario_data.get('status', True):
-                return False, FormatadorCLI.erro("Usuário inativo. Contate o administrador")
-            
-            # Verifica senha (NOTA: Em produção, usar hash!)
-            if usuario_data['senha'] != senha:
-                return False, FormatadorCLI.erro("CPF ou senha incorretos")
-            
-            # Cria objeto do usuário baseado no tipo
-            usuario_obj = self._criar_objeto_usuario(usuario_data)
+            # Busca usuário no banco (O repositório do seu amigo já retorna o OBJETO pronto)
+            usuario_obj = self.repositorio.buscar_usuario_por_cpf(cpf)
             
             if not usuario_obj:
-                return False, FormatadorCLI.erro("Erro ao carregar perfil do usuário")
+                return False, FormatadorCLI.erro("Usuário não encontrado")
+            
+            # Verificação de senha usando o atributo do OBJETO (não dicionário)
+            if usuario_obj.senha != senha:
+                return False, FormatadorCLI.erro("CPF ou senha incorretos")
+            
+            # Verifica se o usuário está ativo (se o atributo existir na sua Model)
+            if hasattr(usuario_obj, 'status') and not usuario_obj.status:
+                return False, FormatadorCLI.erro("Usuário inativo")
+            
+            # Determina o tipo para a sessão baseado na classe do objeto
+            tipo_usuario = usuario_obj.__class__.__name__.upper()
             
             # Define na sessão
-            tipo_usuario = usuario_data['tipo']
             self.sessao.definir_usuario(usuario_obj, tipo_usuario)
             
-            # Mensagem de boas-vindas
-            nome = usuario_obj.nome
-            tipo_formatado = tipo_usuario.capitalize()
-            mensagem = FormatadorCLI.sucesso(f"Bem-vindo, {nome} ({tipo_formatado})!")
-            
-            return True, mensagem
+            return True, FormatadorCLI.sucesso(f"Bem-vindo, {usuario_obj.nome} ({tipo_usuario})!")
             
         except Exception as e:
             return False, FormatadorCLI.erro(f"Erro durante login: {str(e)}")
+
+    def obter_usuario_logado(self) -> Optional[Usuario]:
+        """
+        Método que o secretario_cli.py chama. 
+        Apenas um alias para manter compatibilidade com seu código anterior.
+        """
+        return self.sessao.obter_usuario()
     
     def fazer_logout(self) -> str:
         """
@@ -130,16 +115,11 @@ class SistemaAutenticacao:
         return self.sessao.obter_tipo_usuario()
     
     def _criar_objeto_usuario(self, dados_usuario: dict) -> Optional[Usuario]:
-        """
-        Cria o objeto do usuário baseado nos dados do banco.
-        
-        Args:
-            dados_usuario: Dados do usuário do banco
-        
-        Returns:
-            Objeto do usuário ou None se erro
-        """
+        """Cria o objeto do usuário baseado nos dados do banco."""
         try:
+            # Import local para evitar o erro circular que vimos antes
+            from src.models.gestor import Gestor 
+            
             tipo = dados_usuario['tipo'].upper()
             
             if tipo == 'ALUNO':
@@ -196,8 +176,7 @@ class SistemaAutenticacao:
                     departamento=dados_usuario['departamento']
                 )
             
-            else:
-                return None
+            return None
                 
         except Exception as e:
             print(f"Erro ao criar objeto usuário: {e}")

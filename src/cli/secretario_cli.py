@@ -1,114 +1,136 @@
 import typer
-from rich import print
+from rich.console import Console
 from rich.table import Table
-from src.cli.auth import auth_system  # Supondo que você tem esse gerenciador de sessão
+from rich.panel import Panel
+from typing import Optional
+
+# Imports do seu projeto
+from src.cli.auth import auth_system
 from src.database.RepositorioGeral import RepositorioGeral
 from src.models.secretario import Secretario
 
+console = Console()
 app = typer.Typer(help="Painel Administrativo do Secretário de Educação")
 repo = RepositorioGeral()
+
+# --- AUXILIARES ---
 
 def get_session_secretario() -> Secretario:
     """Recupera o secretário logado e valida o acesso."""
     user = auth_system.get_usuario_logado()
     if not isinstance(user, Secretario):
-        print("[bold red] Acesso Negado: Comando exclusivo para Secretários.[/bold red]")
+        console.print("[bold red]❌ Acesso Negado: Comando exclusivo para Secretários.[/bold red]")
         raise typer.Exit(1)
     return user
+
+def exibir_cabecalho(sec: Secretario):
+    """Exibe um painel visual no topo do menu."""
+    console.clear()
+    mun_nome = sec.municipio_responsavel.nome if sec.municipio_responsavel else "N/A"
+    console.print(Panel(
+        f"[bold blue]STUDYFORGE - PAINEL DO SECRETÁRIO[/bold blue]\n"
+        f"[cyan]Usuário:[/cyan] {sec.nome} | [cyan]Município:[/cyan] {mun_nome} | [cyan]Depto:[/cyan] {sec.departamento}",
+        expand=False
+    ))
+
+# --- COMANDOS TYPER (@app.command) ---
 
 @app.command()
 def perfil():
     """Exibe o perfil completo do Secretário logado."""
     sec = get_session_secretario()
-    print(sec.exibir_perfil())
+    console.print(Panel(sec.exibir_perfil(), title="Meu Perfil", border_style="green"))
+    if not typer.Context.resilient_parsing: # Evita travar se for chamado via menu
+        typer.pause()
 
 @app.command()
 def estatisticas_rede():
     """Gera relatório de todas as escolas do município."""
     sec = get_session_secretario()
+    with console.status("[bold green]Buscando dados da rede..."):
+        escolas = repo.buscar_escolas_por_municipio(sec.municipio_responsavel.id_municipio)
+        relatorio = sec.ver_estatisticas(escolas)
     
-    # O Repo busca a lista de objetos Escola vinculados ao município do Secretário
-    escolas = repo.buscar_escolas_por_municipio(sec.municipio_responsavel.id_municipio)
-    
-    relatorio = sec.ver_estatisticas(escolas)
-    print(f"[bold cyan]{relatorio}[/bold cyan]")
+    console.print(f"\n[bold cyan]📊 RELATÓRIO DE REDE[/bold cyan]")
+    console.print(relatorio)
+    typer.pause()
 
 @app.command()
-def nomear_gestor(
-    gestor_id: int = typer.Argument(..., help="ID do usuário Gestor"),
-    escola_id: int = typer.Argument(..., help="ID da Escola alvo")
+def comunicado_global(
+    titulo: str = typer.Option(..., prompt="Título do Comunicado"),
+    conteudo: str = typer.Option(..., prompt="Conteúdo da Mensagem")
 ):
-    """Vincula um Gestor a uma Escola (Respeitando a Jurisdição)."""
-    sec = get_session_secretario()
-    
-    # Busca os objetos reais no banco para passar para o método do Secretario
-    gestor = repo.buscar_usuario_por_id(gestor_id)
-    escola_alvo = repo.buscar_escola_por_id(escola_id)
-
-    if not gestor or not escola_alvo:
-        print("[red]❌ Gestor ou Escola não encontrados no banco.[/red]")
-        return
-
-    # Chama o seu método 'realizar_cadastro' que você escreveu
-    try:
-        resultado = sec.realizar_cadastro(gestor, escola_alvo)
-        if "Sucesso" in resultado:
-            # Alimenta o banco com a mudança
-            repo.vincular_gestor_escola(gestor.id_usuario, escola_alvo.id_escola)
-            print(f"[green] {resultado}[/green]")
-        else:
-            print(f"[yellow] {resultado}[/yellow]")
-    except Exception as e:
-        print(f"[red] Erro na regra de negócio: {e}[/red]")
-
-@app.command()
-def comunicado_global(titulo: str, conteudo: str):
     """Envia um comunicado para TODAS as escolas do município."""
     sec = get_session_secretario()
-    
-    # Carrega as escolas para a lista interna do objeto municipio (necessário para o seu método)
+    # Sincroniza escolas para a lógica de negócio
     sec.municipio_responsavel.escolas_situadas = repo.buscar_escolas_por_municipio(sec.municipio_responsavel.id_municipio)
     
     resultado = sec.enviar_mensagem(titulo, conteudo)
-    print(f"[bold blue] {resultado}[/bold blue]")
+    console.print(f"[bold blue]ℹ️ {resultado}[/bold blue]")
+    typer.pause()
 
 @app.command()
-def gerenciar_pagamento(escola_id: int, demanda_id: str):
+def gerenciar_pagamento(
+    escola_id: int = typer.Option(..., prompt="ID da Escola"),
+    demanda_id: str = typer.Option(..., prompt="ID da Demanda")
+):
     """Aprova e paga uma demanda financeira de uma escola."""
     sec = get_session_secretario()
     escola = repo.buscar_escola_por_id(escola_id)
     
     if not escola:
-        print("[red] Escola não encontrada.[/red]")
+        console.print("[red]❌ Escola não encontrada.[/red]")
         return
 
-    # 1. Administrar (Aprovar)
-    print(f"--- Analisando demanda {demanda_id} ---")
+    console.print(f"\n[yellow]--- Analisando demanda {demanda_id} ---[/yellow]")
     aviso_aprovacao = sec.administrar_solicitacoes(escola, demanda_id, "APROVAR")
-    print(aviso_aprovacao)
+    console.print(f"[blue]{aviso_aprovacao}[/blue]")
 
-    # 2. Se aprovado, Gerenciar Verba (Pagar)
     if "aprovada" in aviso_aprovacao.lower():
         confirmacao = sec.gerenciar_verba(escola, demanda_id)
-        # Atualiza o saldo da escola e do municipio no banco
+        # Sincroniza com o Banco
         repo.atualizar_saldos(sec.municipio_responsavel, escola)
-        # Atualiza o status da demanda no banco
         repo.atualizar_status_demanda(demanda_id, "CONCLUIDA / PAGA")
-        print(f"[bold gold1]{confirmacao}[/bold gold1]")
+        console.print(f"[bold yellow]💰 {confirmacao}[/bold yellow]")
+    
+    typer.pause()
 
-@app.command()
-def mudar_status_gestor(gestor_id: int, ativo: bool):
-    """Ativa ou Desativa um Gestor da rede municipal."""
-    sec = get_session_secretario()
-    gestor = repo.buscar_usuario_por_id(gestor_id)
+# --- MENU INTERATIVO (O Loop que você queria) ---
 
-    if not gestor:
-        print("[red] Gestor não encontrado.[/red]")
-        return
+def menu_interativo_secretario(sec: Secretario):
+    """Loop principal de navegação interativa."""
+    while True:
+        exibir_cabecalho(sec)
+        
+        table = Table(show_header=False, box=None)
+        table.add_row("1", "👤 Ver Meu Perfil")
+        table.add_row("2", "📊 Estatísticas da Rede")
+        table.add_row("3", "📢 Enviar Comunicado Global")
+        table.add_row("4", "💸 Gerenciar Pagamentos/Demandas")
+        table.add_row("0", "🚪 Logout e Sair")
+        
+        console.print(table)
+        opcao = typer.prompt("\nEscolha uma ação", default="0")
 
-    resultado = sec.gerenciar_status_gestor(gestor, ativo)
-    if "Sucesso" in resultado:
-        repo.atualizar_status_usuario(gestor_id, ativo)
-        print(f"[green] {resultado}[/green]")
-    else:
-        print(f"[red] {resultado}[/red]")
+        if opcao == "1":
+            perfil()
+        elif opcao == "2":
+            estatisticas_rede()
+        elif opcao == "3":
+            comunicado_global()
+        elif opcao == "4":
+            gerenciar_pagamento()
+        elif opcao == "0":
+            console.print("[bold red]Encerrando sessão...[/bold red]")
+            auth_system.fazer_logout()
+            break
+        else:
+            console.print("[red]Opção inválida![/red]")
+            typer.pause()
+
+@app.callback(invoke_without_command=True)
+def main(ctx: typer.Context):
+    """Entrada padrão para o comando 'secretario'"""
+    if ctx.invoked_subcommand is None:
+        sec = get_session_secretario()
+        menu_interativo_secretario(sec)
