@@ -13,10 +13,9 @@ env/
 ENV/
 
 # --- BANCO DE DADOS LOCAL (CRÍTICO PARA VOCÊ) ---
-# Ignora arquivos de dados para não sujar o histórico com testes
+data/*.db
 *.json
-# Se quiser manter um arquivo de configuração específico, use:
-# !config.json
+
 
 # --- FERRAMENTAS DE DESENVOLVIMENTO ---
 .vscode/

@@ -3,30 +3,48 @@ import re
 from datetime import datetime
 
 """
-Representa a entidade base para todos os usuários do sistema StudyForge. 
+Representa a entid_usuarioade base para todos os usuários do sistema StudyForge. 
 Esta é uma classe abstrata (ABC) que define os atributos e métodos comuns 
 a todos os perfis (Professor, Aluno, Gestor e Secretario). Não deve ser 
 instanciada diretamente.
 """
 class Usuario(ABC):
-    def __init__(self, nome, cpf, email, senha, telefone, data_nascimento, status=True):
-        self._id = None 
+    def __init__(self, id_usuario, nome, cpf, email, senha, telefone, data_nascimento, tipo, login=False, status=True):
+        """
+        Inicializa um novo usuário do sistema StudyForge.
+        
+        Args:
+            id_usuario (int): Identificador único do usuário.
+            nome (str): Nome completo do usuário.
+            cpf (str): CPF do usuário (11 dígitos numéricos).
+            email (str): Endereço de email do usuário.
+            senha (str): Senha de acesso (mínimo 8 caracteres).
+            telefone (str): Número de telefone (10 ou 11 dígitos).
+            data_nascimento (str): Data de nascimento no formato DD/MM/AAAA.
+            tipo (str): Tipo de usuário (Professor, Aluno, Gestor, Secretario).
+            login (bool, optional): Indica se o usuário está logado. Defaults to False.
+            status (bool, optional): Indica se a conta está ativa. Defaults to True.
+        """
+        self._id_usuario = id_usuario
         self.nome = nome
         self.cpf = cpf
         self.email = email
         self.senha = senha
         self.telefone = telefone
         self.data_nascimento = data_nascimento
-        self.status = status
+        self._tipo = tipo 
+        self._login = login
+        self._status = status
+
 
     #-----------------
     #GETTERS E SETTERS
     #-----------------
 
     @property
-    def id(self):
-        """Permite ler o ID, mas sem altera-lo diretamente"""
-        return self._id
+    def id_usuario(self):
+        """Permite ler o id_usuario, mas sem altera-lo diretamente"""
+        return self._id_usuario
     @property
     def nome(self):
         return self._nome
@@ -38,7 +56,7 @@ class Usuario(ABC):
         padrao_nome = r'^[A-Za-zÀ-ÖØ-öø-ÿ\s]+$'
 
         if not re.match(padrao_nome, valor):
-            raise ValueError("Erro: Nome inválido! Use apenas letras.")
+            raise ValueError("Erro: Nome inválid_usuarioo! Use apenas letras.")
         else:
             self._nome = valor.strip().title()
             
@@ -69,7 +87,7 @@ class Usuario(ABC):
         padrao = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
 
         if not re.match(padrao, valor):
-            raise ValueError("Erro: Formato de email inválido!")
+            raise ValueError("Erro: Formato de email inválid_usuarioo!")
         
         else:
             self._email = valor.lower().strip()
@@ -78,7 +96,7 @@ class Usuario(ABC):
     def senha(self):
         return self._senha
     
-    @senha.setter
+    @senha.setter   
     def senha(self, valor):
         if not isinstance(valor, str):
             raise TypeError("Erro: A senha deve ser uma string!")
@@ -103,15 +121,10 @@ class Usuario(ABC):
     def telefone(self, valor):
         if not isinstance(valor, str):
             raise TypeError("Erro: O telefone deve ser uma string!")
-        
-        tel_limpo = valor.replace("(", "").replace(")", "").replace("-", "").replace(" ", "").replace("-", "")
-
-        if not tel_limpo.isdigit():
-            raise ValueError("Erro: O telefone deve conter apenas números!")
+        tel_limpo = re.sub(r'\D', '', valor)
         if len(tel_limpo) not in [10, 11]:
             raise ValueError("Erro: O telefone deve conter 10 ou 11 dígitos!")
-        else:
-            self._telefone = tel_limpo
+        self._telefone = tel_limpo
     
     @property
     def data_nascimento(self):
@@ -121,27 +134,28 @@ class Usuario(ABC):
     def data_nascimento(self, valor):
         if not isinstance(valor, str):
             raise TypeError("Erro: A data deve ser uma string no formato DD/MM/AAAA!")
-        
         try:
-            data_convertida = datetime.strptime(valor, "%d/%m/%Y")
-
-            if data_convertida > datetime.now():
-                raise ValueError("Erro: Data de nascimento inválida!")
-            self._data_nascimento = data_convertida
+            data_convertid_usuarioa = datetime.strptime(valor, "%d/%m/%Y")
+            if data_convertid_usuarioa > datetime.now():
+                raise ValueError("Erro: Data de nascimento inválid_usuarioa!")
+            self._data_nascimento = data_convertid_usuarioa
         
         except ValueError:
-            raise ValueError("Erro: Data inválida! Use o formato DD/MM/AAAA (ex: 02/08/2003).") 
+            raise ValueError("Erro: Data inválid_usuarioa! Use o formato DD/MM/AAAA (ex: 02/08/2003).") 
         
     @property
     def status(self):
-        return "Ativo" if self._status else "Inativo"
+        return "Ativo" if self._status else "Inativo (Conta Suspensa/Desativada)"
     
     @status.setter
     def status(self, valor):
         if not isinstance(valor, bool):
-            raise TypeError("Erro: Status deve ser um bool (True ou False)!")
-        else:
-            self._status = valor
+            raise TypeError("Erro: O status deve ser um valor booleano (True ou False)!")
+        self._status = valor
+    
+    @property
+    def login(self):
+        return "Online" if self._login == True else "Offline"
 
     #-------
     #MÉTODOS
@@ -149,42 +163,112 @@ class Usuario(ABC):
 
     @abstractmethod
     def get_permissao(self):
-        """Método abstrato: cada subclasse (Aluno, Professor) 
-        retornará sua própria string ou lista de permissões.
+        """
+        Retorna as permissões do usuário.
+        
+        Este é um método abstrato que deve ser implementado pelas subclasses.
+        Cada tipo de usuário (Professor, Aluno, Gestor, Secretario) define
+        suas próprias permissões no sistema.
+        
+        Returns:
+            list: Lista de permissões do usuário.
         """
         pass
 
+    @abstractmethod
     def exibir_perfil(self):
-        """Exibe as informações básicas do Usuário"""
-        print(f"\n--- Perfil do Usuário [{self.status}]")
-        print(f"ID: {self.id}")
-        print(f"Nome: {self.nome}")
-        print(f"CPF: {self.cpf}")
-        print(f"Email: {self.email}")
-        print(f"Telefone: {self.telefone}")
-        print(f"Data de Nascimento: {self.data_nascimento}")
+        """
+        Exibe as informações do perfil do usuário.
+        
+        Este é um método abstrato que deve ser implementado pelas subclasses.
+        Cada tipo de usuário exibe suas informações de forma específica.
+        
+        Returns:
+            str: String contendo as informações formatadas do usuário.
+        """
+        pass
 
-    def autenticar(self, senha_tentativa):
-        """Verifica se a senha coincide com a senha privada, True para Correta e False para Errada"""
-        return self._senha == senha_tentativa.strip()
+    def realizar_login(self, email_tentativa, senha_tentativa):
+        """
+        Realiza o login do usuário no sistema.
+        
+        Verifica se a conta está ativa e valida as credenciais (email e senha).
+        Se as credenciais estiverem corretas, marca o usuário como logado.
+        
+        Args:
+            email_tentativa (str): Email fornecido na tentativa de login.
+            senha_tentativa (str): Senha fornecida na tentativa de login.
+        
+        Returns:
+            bool: True se o login foi bem-sucedido.
+        
+        Raises:
+            PermissionError: Se a conta estiver desativada.
+            ValueError: Se o email ou senha forem inválidos.
+        """
+        if not self._status:
+            raise PermissionError("Erro: Esta conta está desativada, por favor entrar em contato com a secretaria.")
+        if senha_tentativa != self._senha or email_tentativa != self._email:
+            raise  ValueError("Erro: Email ou senha inválid_usuarioos.")
+        
+        self._login = True
+        return True
 
     def encerrar_sessao(self):
-        """Lógica para log de saída do Sistema"""
-        print(f"Sessão do usuário {self.nome} encerrada com sucesso.")
-
-    def abrir_configuraçoes(self):
-        """Simulação de abertura de menu de configurações."""
-        print(f"Abrindo painel de configurações para: {self._email}...")
+        """
+        Encerra a sessão do usuário no sistema (logout).
+        
+        Marca o usuário como deslogado.
+        
+        Returns:
+            bool: False se o usuário já estava deslogado, True se a sessão foi encerrada com sucesso.
+        """
+        if not self._login:
+            return False
+        
+        self._login = False
+        return True
+        
+    def trocar_senha(self, verificador, nova_senha):
+        """
+        Altera a senha do usuário.
+        
+        Valida a senha atual antes de permitir a alteração para uma nova senha.
+        A nova senha deve atender aos critérios de validação (mínimo 8 caracteres,
+        contém números ou caracteres especiais).
+        
+        Args:
+            verificador (str): Senha atual para verificação.
+            nova_senha (str): Nova senha desejada.
+        
+        Raises:
+            ValueError: Se a senha atual for inválida ou a nova senha não atender aos critérios.
+        """
+        if verificador != self._senha:
+            raise ValueError("Erro: Senha anterior inválid_usuarioa.")
+        
+        self.senha = nova_senha
 
     def to_dict(self):
+        """
+        Converte os dados do usuário em um dicionário.
+        
+        Retorna todas as informações do usuário em formato de dicionário,
+        útil para serialização (JSON) ou persistência em banco de dados.
+        
+        Returns:
+            dict: Dicionário contendo id_usuario, cpf, nome, email, senha,
+                  telefone, data_nascimento, login, status e tipo do usuário.
+        """
         return {
-            "tipo": self.__class__.__name__,
-            "id": self._id, 
+            "id_usuario": self._id_usuario, 
             "nome": self._nome,
             "cpf": self._cpf,
             "email": self._email,
             "senha": self._senha,
             "telefone": self._telefone,
-            "data_nascimento": self.data_nascimento,
-            "status": self._status
+            "data_nascimento": self._data_nascimento,
+            "tipo": self.__class__.__name__.upper(),
+            "login": int(self._login),        
+            "status": int(self._status),
         }

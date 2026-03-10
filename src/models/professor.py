@@ -1,5 +1,8 @@
 from src.models.usuario import Usuario
 from datetime import date
+from src.models.nota import Nota
+from src.models.diario import Diario
+from src.models.frequencia import Frequencia
 import re
 
 """
@@ -7,16 +10,34 @@ Representa a entidade Professor conforme o diagrama UML.
 Herda atributos base de Usuario e adiciona dados funcionais e acadêmicos.
 """
 class Professor(Usuario):
-    def __init__(self, nome, cpf, email, senha, telefone, data_nascimento,
+    def __init__(self, id_usuario, nome, cpf, email, senha, telefone, data_nascimento,
                  registro_funcional, escola_associada, titulacao, area_atuacao, 
-                 salario, status=True):
-        super().__init__(nome, cpf, email, senha, telefone, data_nascimento, status)
+                 salario):
+        """
+        Inicializa um novo professor no sistema StudyForge.
+        
+        Args:
+            id_usuario (int): Identificador unico do professor.
+            nome (str): Nome completo do professor.
+            cpf (str): CPF do professor (11 digitos numericos).
+            email (str): Endereco de email do professor.
+            senha (str): Senha de acesso (minimo 8 caracteres).
+            telefone (str): Numero de telefone (10 ou 11 digitos).
+            data_nascimento (str): Data de nascimento no formato DD/MM/AAAA.
+            registro_funcional (str): Registro funcional no formato RF-AAAA-NNNN.
+            escola_associada (Escola): Objeto da escola em que o professor trabalha.
+            titulacao (str): Grau academico (Graduado, Especialista, Mestre, Doutor ou Pos-Doutor).
+            area_atuacao (str): Area de atuacao/disciplina do professor.
+            salario (float): Salario mensaldo professor.
+        """
+        super().__init__(id_usuario, nome, cpf, email, senha, telefone, data_nascimento, "PROFESSOR")
+        
         self.registro_funcional = registro_funcional
         self.escola_associada = escola_associada
         self.titulacao = titulacao
         self.area_atuacao = area_atuacao
         self.salario = salario
-        self.turmas_associadas = []
+        self._turmas_associadas = []
 
     #-----------------
     #GETTERS E SETTERS
@@ -29,31 +50,11 @@ class Professor(Usuario):
     
     @registro_funcional.setter
     def registro_funcional(self, valor):
-        if not isinstance(valor, str):
-            raise TypeError("Erro: Registro Funcional deve ser uma string!")
-        
+        """Formata o registro funcional para formato padrão"""
         valor = valor.strip().upper()
-
-        padrao_rf = r'^RF-\d{4}-\d{4}$'
-
-        if not re.match(padrao_rf, valor):
-            raise ValueError("Erro: RF inválido! Use o padrão RF-ANO-SEQUENCIAL (Ex: RF-2026-0001).")
-        
+        if not re.match(r'^RF-\d{4}-\d{4}$', valor):
+            raise ValueError("Erro: RF deve seguir o padrão RF-2026-0001")
         self._registro_funcional = valor
-
-    @property
-    def escola_associada(self):
-        """Retorna o nome da escola onde o professor leciona."""
-        return self._escola_associada
-    
-    @escola_associada.setter
-    def escola_associada(self, valor):
-        if hasattr(valor, 'id_escola'):
-            self._escola_associada = valor
-        elif isinstance(valor, str):
-            self._escola_associada = valor
-        else:
-            raise TypeError("Erro: escola_associada deve ser um objeto da classe Escola.")
         
     @property
     def titulacao(self):
@@ -62,35 +63,12 @@ class Professor(Usuario):
     
     @titulacao.setter
     def titulacao(self, valor):
-        if not isinstance(valor, str):
-            raise TypeError("Erro: A titulação deve ser uma string!")
-        
-        tit_formatado = valor.strip().title()
-
-        titulacoes_validas = ["Graduado", "Especialista", "Mestre", "Doutor", "Pós-Doutor"]
-
-        if tit_formatado not in titulacoes_validas:
-            raise ValueError(f"Erro: Titulação inválida! Escolha entre: {', '.join(titulacoes_validas)}")
-        
-        else:
-            self._titulacao = tit_formatado
-
-    @property
-    def area_atuacao(self):
-        """Retorna a área de especialidade/lecionada pelo professor."""
-        return self._area_atuacao
-    
-    @area_atuacao.setter
-    def area_atuacao(self, valor):
-        if not isinstance(valor, str):
-            raise TypeError("Erro: A área de atuação deve ser uma string!")
-        area_limpa = valor.strip().title()
-
-        if len(area_limpa) < 3:
-            raise ValueError("Erro: A área de atuação deve ter no mínimo 3 caracteres!")
-        
-        else: 
-            self._area_atuacao = area_limpa
+        """Formata a titulação para formato padrão"""
+        validas = ["Graduado", "Especialista", "Mestre", "Doutor", "Pós-Doutor"]
+        valor_formatado = valor.strip().title()
+        if valor_formatado not in validas:
+            raise ValueError(f"Erro: Titulação deve ser uma de: {', '.join(validas)}")
+        self._titulacao = valor_formatado
 
     @property
     def salario(self):
@@ -99,117 +77,216 @@ class Professor(Usuario):
     
     @salario.setter
     def salario(self, valor):
-        if not isinstance(valor, (int,float)):
-            raise TypeError("Erro: O salario deve ser um valor numérico!")
-        if valor < 0:
-            raise ValueError("Erro: Salario não pode ser negativo!")
-        
-        salario_minimo = 1621.00
-        if valor < salario_minimo:
-            print(f"⚠️ Aviso: O salário informado (R$ {valor:.2f}) está abaixo do minimo nacional.")
+        if not isinstance(valor, (int, float)) or valor < 0:
+            raise ValueError("Erro: O salário deve ser um número positivo.")
         self._salario = float(valor)
+
+    @property
+    def turmas_associadas(self):
+        """Retorna a lista. Não permitimos sobrescrever a lista inteira por fora."""
+        return self._turmas_associadas
 
     #-------
     #MÉTODOS
     #-------
 
     def get_permissao(self):
-        """Retorna as permissões específicas do professor no sistema."""
-        return "Professor: Acesso a diários de classe, frequências e materiais didáticos."
-    
-    #Refatorado para atender ao RN02 
-    def realizar_chamada(self, turma, data: date, lista_presencas: list[dict]):
         """
-        RN02: Registra a presença dos alunos com verificação de permissão.
+        Retorna as permissoes do professor no sistema.
+        
+        Returns:
+            list: Lista contendo as permissoes do professor:
+                  - LANCAR_NOTAS: Lancamento de notas para alunos
+                  - REGISTRAR_PRESENCA: Registro de frequencia dos alunos
+                  - POSTAR_CONTEUDO: Publicacao de conteudo e aulas
+                  - ENVIAR_MATERIAL: Envio de materiais didaticos
+                  - VER_TURMAS: Visualizacao das turmas associadas
+        """
+        return ["LANCAR_NOTAS", "REGISTRAR_PRESENCA", "POSTAR_CONTEUDO", "ENVIAR_MATERIAL", "VER_TURMAS"]
+
+    def realizar_chamada(self, turma, data, lista_presenca, conteudo_aula):
+        """
+        Registra a chamada (frequencia) e a aula para a turma.
+        
+        Permite que o professor registre a presenca/falta dos alunos em uma aula
+        e documente o conteudo apresentado.
+        
+        Args:
+            turma (Turma): Objeto da turma na qual a aula ocorreu.
+            data (date): Data da aula.
+            lista_presenca (list): Lista de dicionarios com chaves:
+                                   - 'aluno': Objeto do aluno
+                                   - 'presenca': Booleano (True se presente, False se faltou)
+            conteudo_aula (str): Descricao do conteudo ministrado na aula.
+        
+        Returns:
+            str: Mensagem de sucesso ou erro sobre o registro da chamada.
         """
         if turma not in self.turmas_associadas:
-            print(f"❌ Erro de Permissão: O professor {self.nome} não pode realizar chamada na turma {getattr(turma, 'nome', 'desconhecida')} (não vinculada).")
-            return
+            return "Professor não pertence a esta turma."
+        
+        # 1. Instancia o objeto Diario (para persistência futura)
+        novo_diario = Diario(
+            id_diario=None,
+            id_professor=self.id_usuario,
+            id_turma=turma.id_turma,
+            disciplina=self.area_atuacao,
+            data=data,
+            conteudo=conteudo_aula
+        )
 
-        if not hasattr(turma, 'alunos_matriculados'):
-            print("❌ Erro: Objeto turma inválido ou sem lista de alunos.")
-            return
+        # 2. Registra na Turma (que usa dicionários internamente)
+        # O método registrar_aula da Turma valida se o professor é regente
+        sucesso_turma = turma.registrar_aula(self, data, conteudo_aula)
+        
+        if not sucesso_turma:
+            return "Erro ao registrar aula no diário da turma."
 
-        if not lista_presencas:
-            print("⚠️ Aviso: Nenhuma presença enviada para registro.")
-            return
-
-        for registro in lista_presencas:
+        # 3. Processa cada aluno na lista de presença
+        objetos_frequencia = []
+        for registro in lista_presenca:
             aluno = registro.get("aluno")
-            status = registro.get("presente")
+            status_bool = registro.get("presenca")
+            status_str = "PRESENTE" if status_bool else "AUSENTE"
             
-            if aluno and hasattr(aluno, 'registrar_presenca'):
-                aluno.registrar_presenca(data, status)
-        
-        turma.registrar_aula(self, data, f"Chamada realizada pelo Prof. {self.nome}")
-        print(f"✅ Chamada concluída para a Turma {turma.nome} na data {data}.")
+            # Instancia o objeto Frequencia exigido pelo Aluno
+            nova_freq = Frequencia(
+                id_frequencia=None,
+                status=status_str,
+                id_aluno=aluno.id_usuario,
+                id_diario=None,
+                aluno=aluno
+            )
 
-    def postar_conteudo(self, turma, data: str, conteudo: str):
+            # Sincroniza com o objeto Aluno (que agora espera o objeto Frequencia)
+            if hasattr(aluno, 'registrar_presenca'):
+                try:
+                    aluno.registrar_presenca(nova_freq)
+                except TypeError as e:
+                    print(f"Erro de compatibilidade no Aluno: {e}")
+                
+            objetos_frequencia.append(nova_freq)
+
+        return novo_diario, objetos_frequencia
+
+    def exibir_perfil(self):
         """
-        Associa o conteúdo lecionado ao diário de classe da turma.
+        Exibe o perfil completo do professor.
+        
+        Implementacao do metodo abstrato da classe Usuario que retorna uma string
+        formatada com os dados funcionais do professor, incluindo registro funcional,
+        titulacao, area de atuacao, email e turmas regentes.
+        
+        Returns:
+            str: String formatada contendo informacoes do perfil do professor.
         """
-        if hasattr(turma, 'registrar_aula'):
-            sucesso = turma.registrar_aula(data, conteudo)
-            if sucesso:
-                print(f"📖 Conteúdo postado com sucesso na turma {getattr(turma, 'nome', 'desconhecida')}.")
+        nomes_turmas = [turma.nome for turma in self._turmas_associadas]
+        turmas_str = ", ".join(nomes_turmas) if nomes_turmas else "Nenhuma turma alocada"
+        status_conta = "Ativa" if self._status else "Inativa"
+
+        return (
+            f"\n" + "="*40 + "\n"
+            f"          PERFIL DO PROFESSOR\n"
+            f"="*40 + "\n"
+            f"Nome: {self.nome}\n"
+            f"RF: {self.registro_funcional}\n"
+            f"Titulação: {self.titulacao}\n"
+            f"Área: {self.area_atuacao}\n"
+            f"E-mail: {self.email}\n"
+            f"Turmas: {turmas_str}\n"
+            f"Status: {status_conta}\n"
+            f"="*40
+        )
+
+    def lancar_nota(self, turma, aluno, valor, tipo, data_prova):
+        """
+        Lanca uma nota para um aluno em uma disciplina especifica.
+        
+        Permite que o professor registre notas dos alunos em sua turma,
+        atualizando tanto o boletim do aluno quanto o sistema da turma.
+        
+        Args:
+            turma (Turma): Objeto da turma do aluno.
+            aluno (Aluno): Objeto do aluno que recebera a nota.
+            disciplina (str): Nome da disciplina.
+            valor (float): Valor da nota (0 a 10).
+            tipo (str): Tipo de avaliacao (ex: Prova, Trabalho, Participacao).
+            data_prova (date): Data da avaliacao.
+        
+        Returns:
+            str: Mensagem de sucesso ou erro sobre o lancamento da nota.
+        """
+        if aluno not in turma.alunos_matriculados or turma not in self.turmas_associadas:
+            return "Erro de permissão: Vínculo inválido entre professor, turma ou aluno."
+
+        # 1. Objeto Nota para o Aluno
+        nova_nota = Nota(
+            id_nota=None,
+            id_aluno=aluno.id_usuario,
+            id_turma=turma.id_turma,
+            disciplina=self.area_atuacao,
+            valor=valor,
+            data=data_prova,
+            tipo=tipo,
+            aluno=aluno
+        )
+
+        # 2. Registro no sistema de dicionários da Turma
+        turma.registrar_nota_no_sistema(
+            aluno=aluno, 
+            disciplina=self.area_atuacao, 
+            valor=valor, 
+            tipo=tipo, 
+            data_prova=data_prova
+        )
+
+        # 3. Registro no objeto Aluno
+        if hasattr(aluno, 'adicionar_nota'):
+            aluno.adicionar_nota(nova_nota)
+        
+        return nova_nota
+            
+    def enviar_material(self, turma, nome_material, link):
+        """
+        Envia um material didatico para uma turma.
+        
+        Permite que o professor compartilhe materiais (slides, PDFs, videos, etc)
+        com os alunos de uma turma especifica.
+        
+        Args:
+            turma (Turma): Objeto da turma que recebera o material.
+            nome_material (str): Nome descritivo do material.
+            link (str): URL ou caminho para acessar o material.
+        
+        Returns:
+            str: Mensagem de sucesso ou erro sobre o envio do material.
+        """
+        if turma not in self.turmas_associadas:
+            return "O professor não pertence a esta turma."
+        
         else:
-            print("Erro: Não foi possível acessar o diário desta turma.")
+            if not hasattr(turma, '_materiais_postados'):
+                turma._materiais_postados = []
+            turma._materiais_postados.append({"nome": nome_material, "link": link})
 
-    def lancar_nota(self, aluno, disciplina: str, nota: float):
-    # Verificação automática de permissão (RN01)
-        if aluno.turma_associada not in self.turmas_associadas:
-            print(f"❌ Erro de Permissão: O professor {self.nome} não leciona para a turma {aluno.turma_associada.nome if hasattr(aluno.turma_associada, 'nome') else 'desconhecida'}.")
-            return
+        return f"Material '{nome_material}' enviado com sucesso para a turma {turma.nome}!"
 
-        if not isinstance(nota, (int, float)) or not (0 <= nota <= 10):
-            print("❌ Erro: A nota deve ser entre 0 e 10.")
-            return
-
-        if hasattr(aluno, '_notas'):
-            aluno._notas[disciplina] = nota
-            print(f"⭐ Nota {nota} lançada para {aluno.nome} em {disciplina}.")
-
-    def enviar_material(self, turma, titulo: str, link_ou_conteudo: str):
+    def to_dict_especifico(self):
         """
-        Disponibiliza material de estudo para a turma.
+        Exporta os dados especificos do professor em formato de dicionario.
+        
+        Retorna um dicionario contendo os atributos funcionais e academicos
+        do professor para persistencia em banco de dados ou serializacao JSON.
+        
+        Returns:
+            dict: Dicionario com id_usuario, salario, titulacao, area_atuacao,
+                  registro_funcional e id_escola.
         """
-        if hasattr(turma, 'adicionar_material'):
-            material = {
-                "professor": self.nome,
-                "titulo": titulo,
-                "conteudo": link_ou_conteudo
-            }
-            turma.adicionar_material(material)
-            print(f"📚 Material '{titulo}' enviado para a turma {getattr(turma, 'nome', 'desconhecida')}.")
-        else:
-            print("❌ Erro: A turma não possui repositório de materiais.")
-
-    def to_dict(self):
-        """Transforma dados do Professor em dicionário."""
-        dados = super().to_dict() 
-        
-        id_esc = self.escola_associada.id_escola if hasattr(self.escola_associada, 'id_escola') else self.escola_associada
-        
-        dados.update({
+        return{
+            "id_usuario": self.id_usuario,
             "registro_funcional": self.registro_funcional,
-            "id_escola": id_esc,
+            "id_escola": self.escola_associada.id_escola if self.escola_associada else None,
             "titulacao": self.titulacao,
             "area_atuacao": self.area_atuacao,
             "salario": self.salario,
-            "turmas_vinculadas": [t.id_turma if hasattr(t, 'id_turma') else t for t in self.turmas_associadas]
-        })
-        return dados
-    
-    def exibir_perfil(self):
-        """Exibe os dados formatados do professor."""
-        print("\n" + "="*40)
-        print(f"🍎 PERFIL DO PROFESSOR: {self.nome}")
-        print("="*40)
-        print(f"RF:         {self.registro_funcional}")
-        print(f"Titulação:  {self.titulacao}")
-        print(f"Área:       {self.area_atuacao}")
-        print(f"E-mail:     {self.email}")
-        print(f"Salário:    R$ {self.salario:.2f}")
-        print(f"Turmas:     {', '.join([t.nome if hasattr(t, 'nome') else str(t) for t in self.turmas_associadas]) or 'Nenhuma'}")
-        print(f"Status:     {'Ativo' if self.status else 'Inativo'}")
-        print("="*40 + "\n")
+        }
