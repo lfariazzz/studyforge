@@ -23,34 +23,36 @@ class SistemaAutenticacao:
     
     def fazer_login(self, cpf: str, senha: str) -> Tuple[bool, str]:
         try:
-            # Validações básicas (FormatadorCLI e ValidadorCLI mantidos)
-            if not ValidadorCLI.validar_cpf(cpf):
-                return False, FormatadorCLI.erro("CPF inválido. Use o formato XXX.XXX.XXX-XX")
+            # 1. PADRONIZAÇÃO: Limpa o CPF antes de qualquer validação ou busca
+            # Isso garante que trabalharemos apenas com os 11 dígitos
+            cpf_limpo = ValidadorCLI.limpar_cpf(cpf)
+
+            # 2. VALIDAÇÃO: Verifica se o CPF limpo tem 11 dígitos e formato real
+            if not ValidadorCLI.validar_cpf(cpf_limpo):
+                return False, FormatadorCLI.erro("CPF inválido. Verifique o número digitado.")
             
-            # Busca usuário no banco (O repositório do seu amigo já retorna o OBJETO pronto)
-            usuario_obj = self.repositorio.buscar_usuario_por_cpf(cpf)
+            # 3. BUSCA: Usa o CPF limpo para procurar no banco (que deve estar salvo limpo)
+            usuario_obj = self.repositorio.buscar_usuario_por_cpf(cpf_limpo)
             
             if not usuario_obj:
-                return False, FormatadorCLI.erro("Usuário não encontrado")
+                return False, FormatadorCLI.erro("Usuário não encontrado.")
             
-            # Verificação de senha usando o atributo do OBJETO (não dicionário)
+            # 4. SENHA: Verificação de senha usando o atributo do objeto
             if usuario_obj.senha != senha:
-                return False, FormatadorCLI.erro("CPF ou senha incorretos")
+                return False, FormatadorCLI.erro("CPF ou senha incorretos.")
             
-            # Verifica se o usuário está ativo (se o atributo existir na sua Model)
+            # 5. STATUS: Verifica se o usuário está ativo
             if hasattr(usuario_obj, 'status') and not usuario_obj.status:
-                return False, FormatadorCLI.erro("Usuário inativo")
+                return False, FormatadorCLI.erro("Acesso negado: Usuário inativo.")
             
-            # Determina o tipo para a sessão baseado na classe do objeto
+            # 6. SESSÃO: Determina o tipo e salva
             tipo_usuario = usuario_obj.__class__.__name__.upper()
-            
-            # Define na sessão
             self.sessao.definir_usuario(usuario_obj, tipo_usuario)
             
             return True, FormatadorCLI.sucesso(f"Bem-vindo, {usuario_obj.nome} ({tipo_usuario})!")
             
         except Exception as e:
-            return False, FormatadorCLI.erro(f"Erro durante login: {str(e)}")
+            return False, FormatadorCLI.erro(f"Erro inesperado no sistema: {str(e)}")
 
     def obter_usuario_logado(self) -> Optional[Usuario]:
         """
@@ -96,15 +98,6 @@ class SistemaAutenticacao:
         permissoes = usuario.get_permissao()
         return permissao_requerida in permissoes
     
-    def obter_usuario_atual(self) -> Optional[Usuario]:
-        """
-        Retorna o usuário atualmente logado.
-        
-        Returns:
-            Objeto do usuário ou None se não logado
-        """
-        return self.sessao.obter_usuario()
-    
     def obter_tipo_usuario_atual(self) -> str:
         """
         Retorna o tipo do usuário atualmente logado.
@@ -112,7 +105,11 @@ class SistemaAutenticacao:
         Returns:
             Tipo do usuário ou "DESCONECTADO"
         """
-        return self.sessao.obter_tipo_usuario()
+        usuario = self.sessao.obter_usuario()
+        if usuario:
+            # Pegamos o nome da classe do objeto (Gestor, Secretario, etc.)
+            return usuario.__class__.__name__.upper()
+        return "DESCONECTADO"
     
     def _criar_objeto_usuario(self, dados_usuario: dict) -> Optional[Usuario]:
         """Cria o objeto do usuário baseado nos dados do banco."""

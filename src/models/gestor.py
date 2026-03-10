@@ -61,30 +61,21 @@ class Gestor(Usuario):
                 "REALIZAR_SOLICITACAO_VERBA", "ADMINISTRAR_SOLICITACOES_ESCOLA", "GERENCIAR_DADOS_ESCOLA", "ALTERAR_STATUS_USUARIO"]
     
     def exibir_perfil(self):
-        """
-        Exibe o perfil completo do gestor.
-        
-        Implementacao do metodo abstrato da classe Usuario que retorna uma string
-        formatada com os dados principais do gestor, incluindo identificador,
-        escola associada, email e status da conta.
-        
-        Returns:
-            str: String formatada contendo informacoes do perfil do gestor.
-        """
-        nome_escola = self.escola_associada.nome if hasattr(self.escola_associada, 'nome') else "Não informada"
-        status_conta = "Ativa" if self._status else "Inativa/Suspensa"
+        """Retorna uma string formatada com os dados, sem chamar o objeto pai/filho recursivamente."""
+        nome_escola = "Não vinculada"
+        if self.escola_associada:
+            # Acessamos apenas o atributo 'nome' da escola, não o objeto inteiro
+            nome_escola = getattr(self.escola_associada, 'nome', "Sem Nome")
 
         return (
-            f"\n" + "="*40 + "\n"
-            f"          PERFIL DO GESTOR\n"
-            f"="*40 + "\n"
             f"Nome: {self.nome}\n"
-            f"ID Identificador: {self.id_usuario}\n"
-            f"Escola: {nome_escola}\n"
+            f"CPF: {self.cpf}\n"
+            f"ID Usuário: {self.id_usuario}\n"
             f"E-mail: {self.email}\n"
-            f"Status: {status_conta}\n"
-            f"="*40
+            f"Escola: {nome_escola}\n"
+            f"Status: {'Ativo' if self._status else 'Inativo'}"
         )
+    
     
     def _get_total_alunos(self):
         """
