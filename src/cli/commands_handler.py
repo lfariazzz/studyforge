@@ -27,10 +27,11 @@ def registrar_comandos(app: typer.Typer) -> None:
     """
     for perfil in PERFIS:
         try:
-            module = importlib.import_module(f"src.cli.{perfil}_commands")
+            module = importlib.import_module(f"src.cli.{perfil}_cli")
             # cada módulo deve expor uma variável `app` do tipo Typer
             if hasattr(module, "app") and isinstance(getattr(module, "app"), typer.Typer):
                 app.add_typer(getattr(module, "app"), name=perfil)
         except ModuleNotFoundError:
             # módulo ainda não criado; ignora temporariamente
             pass
+
