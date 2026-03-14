@@ -192,7 +192,10 @@ class Secretario(Usuario):
         if not self._status:
             return "Conta do Secretário está desativada"
         
-        if escola_alvo not in self.municipio_responsavel.escolas_situadas:
+        # Verifica pertencimento por id do município para evitar erros de identidade de objeto
+        id_escola_municipio = getattr(escola_alvo, 'id_municipio', None)
+        id_mun_sec = getattr(self.municipio_responsavel, 'id_municipio', None)
+        if id_escola_municipio != id_mun_sec:
             return "Acesso negado: Esta escola não pertence à sua jurisdição municipal."
         
         if not isinstance(gestor, Gestor):
@@ -281,15 +284,48 @@ class Secretario(Usuario):
             return f"Erro: A escola {escola_especifica.nome} não pôde processar o comunicado."
 
         else:
-            escolas = self.municipio_responsavel.escolas_situadas
+            # Preferir usar a lista já carregada no objeto Municipio, mas
+            # se estiver vazia, buscar diretamente no repositório (fallback).
+            escolas = []
+            try:
+                escolas = list(self.municipio_responsavel.escolas_situadas)
+            except Exception:
+                escolas = getattr(self.municipio_responsavel, '_escolas_situadas', []) or []
+
+            if not escolas:
+                try:
+                    from src.database.RepositorioGeral import RepositorioGeral
+                    repo = RepositorioGeral()
+                    escolas = repo.buscar_escolas_por_municipio(getattr(self.municipio_responsavel, 'id_municipio', None)) or []
+                except Exception:
+                    escolas = []
+
             if not escolas:
                 return "Erro: O município não possui escolas cadastradas."
 
             sucessos = 0
             for escola in escolas:
-                if escola.adicionar_noticia(titulo, conteudo, remetente):
-                    sucessos += 1
-            
+                try:
+                    ok = False
+                    try:
+                        ok = escola.adicionar_noticia(titulo, conteudo, remetente)
+                    except Exception:
+                        ok = False
+
+                    # Persiste a notícia no repositório para que outras instâncias e sessões possam recuperar
+                    try:
+                        from src.database.RepositorioGeral import RepositorioGeral
+                        repo = RepositorioGeral()
+                        repo.salvar_noticia(getattr(escola, 'id_escola', None), titulo, conteudo, remetente)
+                    except Exception:
+                        pass
+
+                    if ok:
+                        sucessos += 1
+                except Exception:
+                    # ignora falhas pontuais em uma escola
+                    continue
+
             return f"Comunicado global finalizado. Enviado para {sucessos} de {len(escolas)} escolas."
 
     def gerenciar_verba(self, escola, id_demanda):
@@ -410,22 +446,59 @@ class Secretario(Usuario):
             return "Erro: O objeto fornecido não é uma Escola válida."
 
         if acao.upper() == "ADICIONAR":
-            if escola in self.municipio_responsavel.escolas_situadas:
+            # evita duplicação por comparação de id
+            existing_ids = [getattr(e, 'id_escola', None) for e in getattr(self.municipio_responsavel, 'escolas_situadas', [])]
+            if getattr(escola, 'id_escola', None) in existing_ids:
                 return f"Aviso: A escola {escola.nome} já faz parte da rede."
-            
-            self.municipio_responsavel.escolas_situadas.append(escola)
+
+            # adiciona à lista interna
+            try:
+                self.municipio_responsavel._escolas_situadas.append(escola)
+            except Exception:
+                # fallback para property apenas leitura
+                escolas = getattr(self.municipio_responsavel, '_escolas_situadas', [])
+                escolas.append(escola)
+
             return f"Sucesso: Escola {escola.nome} adicionada ao município {self.municipio_responsavel.nome}."
         
         elif acao.upper() == "REMOVER":
-            if escola not in self.municipio_responsavel.escolas_situadas:
+            # verifica pertencimento por id do município
+            id_alvo = getattr(escola, 'id_escola', None)
+            id_escola_municipio = getattr(escola, 'id_municipio', None)
+            id_mun_sec = getattr(self.municipio_responsavel, 'id_municipio', None)
+
+            if id_escola_municipio != id_mun_sec:
                 return "Erro: Esta escola não pertence a este município ou já foi removida."
 
-            total_alunos = sum(len(t.alunos_matriculados) for t in escola._turmas_existentes)
-            if total_alunos > 0:
-                return f"Erro: Não é possível remover a escola {escola.nome} pois ainda existem alunos matriculados."
+            # tenta encontrar a instância já presente na lista interna, se houver
+            escolas_lista = getattr(self.municipio_responsavel, 'escolas_situadas', None) or getattr(self.municipio_responsavel, '_escolas_situadas', [])
+            encontrada = None
+            for e in escolas_lista:
+                if getattr(e, 'id_escola', None) == id_alvo:
+                    encontrada = e
+                    break
 
-            self.municipio_responsavel.escolas_situadas.remove(escola)
-            return f"Sucesso: Escola {escola.nome} removida da rede municipal."
+            # se não encontrou na lista interna, usa o objeto recebido (vindo do repositório)
+            if encontrada is None:
+                encontrada = escola
+
+            total_alunos = sum(len(t.alunos_matriculados) for t in getattr(encontrada, '_turmas_existentes', []))
+            if total_alunos > 0:
+                return f"Erro: Não é possível remover a escola {encontrada.nome} pois ainda existem alunos matriculados."
+
+            # remove da lista interna quando possível
+            try:
+                if hasattr(self.municipio_responsavel, '_escolas_situadas') and encontrada in self.municipio_responsavel._escolas_situadas:
+                    self.municipio_responsavel._escolas_situadas.remove(encontrada)
+                else:
+                    # tenta também na property list
+                    escolas_lista = getattr(self.municipio_responsavel, 'escolas_situadas', None)
+                    if escolas_lista and encontrada in escolas_lista:
+                        escolas_lista.remove(encontrada)
+            except Exception:
+                pass
+
+            return f"Sucesso: Escola {encontrada.nome} removida da rede municipal."
 
         else:
             return "Comando inválido. Escolha 'ADICIONAR' ou 'REMOVER'."

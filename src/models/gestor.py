@@ -66,8 +66,8 @@ class Gestor(Usuario):
         if self.escola_associada:
             # Acessamos apenas o atributo 'nome' da escola, não o objeto inteiro
             nome_escola = getattr(self.escola_associada, 'nome', "Sem Nome")
-
         return (
+            "PERFIL DO GESTOR\n"
             f"Nome: {self.nome}\n"
             f"CPF: {self.cpf}\n"
             f"ID Usuário: {self.id_usuario}\n"

@@ -13,7 +13,7 @@ class Turma:
     
     TURNOS_PERMITIDOS = ["MANHÃ", "TARDE", "NOITE", "INTEGRAL"]
 
-    def __init__(self, id_turma, nome, ano_letivo, id_escola, turno, capacidade_maxima, escola=None):
+    def __init__(self, id_turma, nome, ano_letivo, id_escola, turno, capacidade_maxima=30, escola=None):
         self._id_turma = id_turma
         self._nome = nome
         self.ano_letivo = ano_letivo  # Usa o setter para validar no momento da criação
