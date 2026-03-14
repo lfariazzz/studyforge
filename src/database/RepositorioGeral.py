@@ -185,6 +185,16 @@ class RepositorioGeral:
 	FOREIGN KEY("id_diario") REFERENCES "diario"("id_diario") ON DELETE CASCADE
     );
                          
+	CREATE TABLE IF NOT EXISTS noticia(
+	"id_noticia" INTEGER PRIMARY KEY AUTOINCREMENT,
+	"id_escola" INTEGER,
+	"titulo" TEXT NOT NULL,
+	"conteudo" TEXT NOT NULL,
+	"data" TEXT NOT NULL,
+	"autor" TEXT,
+	FOREIGN KEY("id_escola") REFERENCES "escola"("id_escola") ON DELETE CASCADE
+	);
+
     CREATE TABLE IF NOT EXISTS configuracoes(
 	"id_config"	INTEGER,
 	"frequencia_minima"	REAL DEFAULT 0.75 CHECK("frequencia_minima" >= 0 AND "frequencia_minima" <= 1),
@@ -242,7 +252,7 @@ class RepositorioGeral:
 	def salvar_usuario(self, usuario_obj):
 		try:
 			dados = usuario_obj.to_dict()
-			codigo_SQL = ('''INSERT INTO usuario (nome, cpf, email, senha, telefone, data_nascimento, tipo, login) VALUES (:nome,:cpf,:email,:senha,:telefone,:data_nascimento,:tipo, :login)''')
+			codigo_SQL = ('''INSERT INTO usuario (nome, cpf, email, senha, telefone, data_nascimento, tipo, login, status) VALUES (:nome,:cpf,:email,:senha,:telefone,:data_nascimento,:tipo, :login, :status)''')
 			self.cursor.execute(codigo_SQL, dados)
 			usuario_obj._id_usuario = self.cursor.lastrowid
 			dados_especificos = usuario_obj.to_dict_especifico()
@@ -387,13 +397,15 @@ class RepositorioGeral:
 				return None
 			escola_obj = self.buscar_escola_por_id(row["id_escola"], incluir_turmas=False)
 			from src.models.turma import Turma
+			# Turma signature: (id_turma, nome, ano_letivo, id_escola, turno, capacidade_maxima=30, escola=None)
 			return Turma(
-				id_turma=row["id_turma"],
-				nome=row["nome"],
-				ano_letivo=row["ano_letivo"],
-				escola_associada=escola_obj,
-				turno=row["turno"],
-				capacidade_maxima=row["capacidade_maxima"]
+				row["id_turma"],
+				row["nome"],
+				row["ano_letivo"],
+				row["id_escola"],
+				row["turno"],
+				row["capacidade_maxima"],
+				escola_obj
 			)
 		except Exception as e:
 			print(f"❌ Erro ao reconstruir objeto Turma: {e}")
@@ -430,13 +442,15 @@ class RepositorioGeral:
 				cursor.execute("SELECT id_escola FROM gestor WHERE id_usuario = ?", (u_id,))
 				g = cursor.fetchone()
 				from src.models.gestor import Gestor
-				esc = self.buscar_escola_por_id(g["id_escola"]) if g else None
+				# avoid recursive cycle: do not include gestor when loading the escola for a gestor
+				esc = self.buscar_escola_por_id(g["id_escola"], incluir_gestor=False, incluir_turmas=False) if g else None
 				return Gestor(u_id, u["nome"], u["cpf"], u["email"], u["senha"], u["telefone"], data_nasc, esc)
 			elif tipo == "PROFESSOR":
 				cursor.execute("SELECT * FROM professor WHERE id_usuario = ?", (u_id,))
 				p = cursor.fetchone()
 				from src.models.professor import Professor
-				esc = self.buscar_escola_por_id(p["id_escola"]) if p else None
+				# avoid recursive cycle: do not include gestor when loading the escola for a professor
+				esc = self.buscar_escola_por_id(p["id_escola"], incluir_gestor=False, incluir_turmas=False) if p else None
 				return Professor(
 					u_id,
 					u["nome"],
@@ -460,7 +474,7 @@ class RepositorioGeral:
 
 			return None
 		except Exception as e:
-			print(f"❌ Erro ao reconstruir objeto {tipo if 'tipo' in locals() else 'Usuario'}: {e}")
+			print(f"❌ Erro ao reconstruir objeto Usuário por CPF: {e}")
 			return None
 		finally:
 			self.connect.row_factory = None
@@ -483,6 +497,8 @@ class RepositorioGeral:
 					nota_de_corte=row["nota_de_corte"]
 				)
 			except Exception as e:
+				import traceback
+				traceback.print_exc()
 				print(f"❌ Erro ao reconstruir objeto Municipio: {e}")
 				return None
 			finally:
@@ -519,7 +535,7 @@ class RepositorioGeral:
 				data_nasc = f"{p[2]}/{p[1]}/{p[0]}"
 			mun_obj = self.buscar_municipio_por_id(row["id_municipio"])
 			from src.models.secretario import Secretario
-			return Secretario(
+			sec = Secretario(
 				id_usuario=row["id_usuario"],
 				nome=row["nome"],
 				cpf=row["cpf"],
@@ -530,6 +546,11 @@ class RepositorioGeral:
 				municipio_responsavel=mun_obj,
 				departamento=row["departamento"]
 			)
+			try:
+				sec.status = bool(int(row["status"]))
+			except Exception:
+				pass
+			return sec
 		except Exception as e:
 			print(f"❌ Erro ao reconstruir objeto Secretario: {e}")
 			return None
@@ -554,10 +575,11 @@ class RepositorioGeral:
 			try:
 				self.connect.row_factory = sqlite3.Row
 				cursor = self.connect.cursor()
+				id_limpo = self._limpar_id(id_busca)
 				sql = '''SELECT * FROM usuario 
 						JOIN gestor ON usuario.id_usuario = gestor.id_usuario 
 						WHERE usuario.id_usuario = ?'''
-				cursor.execute(sql, (id_busca,))
+				cursor.execute(sql, (id_limpo,))
 				row = cursor.fetchone()
 				if not row:
 					return None
@@ -565,9 +587,10 @@ class RepositorioGeral:
 				if "-" in data_nasc:
 					p = data_nasc.split(" ")[0].split("-")
 					data_nasc = f"{p[2]}/{p[1]}/{p[0]}"
-				escola_obj = self.buscar_escola_por_id(row["id_escola"])
+				# prevent recursion: load school without re-loading its gestor/turmas
+				escola_obj = self.buscar_escola_por_id(row["id_escola"], incluir_gestor=False, incluir_turmas=False)
 				from src.models.gestor import Gestor
-				return Gestor(
+				gest = Gestor(
 					id_usuario=row["id_usuario"],
 					nome=row["nome"],
 					cpf=row["cpf"],
@@ -577,6 +600,12 @@ class RepositorioGeral:
 					data_nascimento=data_nasc,
 					escola_associada=escola_obj
 				)
+				# garante que o status reflita o valor no banco
+				try:
+					gest.status = bool(int(row["status"]))
+				except Exception:
+					pass
+				return gest
 			except Exception as e:
 				print(f"❌ Erro ao reconstruir objeto Gestor: {e}")
 				return None
@@ -585,17 +614,37 @@ class RepositorioGeral:
 		
 	def listar_gestores(self):
 		try:
+			self.connect.row_factory = sqlite3.Row
+			cursor = self.connect.cursor()
 			lista_gestores_sql = ('''SELECT * FROM usuario JOIN gestor ON usuario.id_usuario = gestor.id_usuario''')
-			self.cursor.execute(lista_gestores_sql)
-			tuplas_gestor = self.cursor.fetchall()
+			cursor.execute(lista_gestores_sql)
+			rows = cursor.fetchall()
 			objetos_gestor = []
-			for tupla in tuplas_gestor:
-				gestor_obj = Gestor(tupla[0], tupla[2], tupla[1], tupla[3], tupla[4], tupla[5], tupla[6], tupla[11])
+			from src.models.gestor import Gestor
+			for row in rows:
+				# reconstrói via Gestor e respeita o campo status do usuario
+				escola_obj = self.buscar_escola_por_id(row["id_escola"], incluir_gestor=False, incluir_turmas=False) if row["id_escola"] else None
+				gestor_obj = Gestor(
+					id_usuario=row["id_usuario"],
+					nome=row["nome"],
+					cpf=row["cpf"],
+					email=row["email"],
+					senha=row["senha"],
+					telefone=row["telefone"],
+					data_nascimento=str(row["data_nascimento"]),
+					escola_associada=escola_obj
+				)
+				try:
+					gestor_obj.status = bool(int(row["status"]))
+				except Exception:
+					pass
 				objetos_gestor.append(gestor_obj)
 			return objetos_gestor
 		except Exception as e:
 			print(f"❌ Erro no banco: {e}")
 			raise ValueError("Erro ao listar gestores no banco de dados.")
+		finally:
+			self.connect.row_factory = None
 		
 	def buscar_professor_por_id(self, id_busca):
 		try:
@@ -613,9 +662,10 @@ class RepositorioGeral:
 			if "-" in data_nasc:
 				p = data_nasc.split(" ")[0].split("-")
 				data_nasc = f"{p[2]}/{p[1]}/{p[0]}"
-			escola_obj = self.buscar_escola_por_id(row["id_escola"])
+			# prevent recursion: load school without re-loading its gestor/turmas
+			escola_obj = self.buscar_escola_por_id(row["id_escola"], incluir_gestor=False, incluir_turmas=False)
 			from src.models.professor import Professor
-			return Professor(
+			prof = Professor(
 				id_usuario=row["id_usuario"],
 				nome=row["nome"],
 				cpf=row["cpf"],
@@ -629,6 +679,11 @@ class RepositorioGeral:
 				area_atuacao=row["area_atuacao"],
 				salario=row["salario"]
 			)
+			try:
+				prof.status = bool(int(row["status"]))
+			except Exception:
+				pass
+			return prof
 		except Exception as e:
 			print(f"❌ Erro ao reconstruir objeto Professor: {e}")
 			return None
@@ -667,7 +722,7 @@ class RepositorioGeral:
 				data_nasc = f"{p[2]}/{p[1]}/{p[0]}"
 			turma_obj = self.buscar_turma_por_id(row["id_turma"])
 			from src.models.aluno import Aluno
-			return Aluno(
+			alu = Aluno(
 				id_usuario=row["id_usuario"],
 				nome=row["nome"],
 				cpf=row["cpf"],
@@ -678,6 +733,11 @@ class RepositorioGeral:
 				turma_associada=turma_obj,
 				matricula=row["matricula"]
 			)
+			try:
+				alu.status = bool(int(row["status"]))
+			except Exception:
+				pass
+			return alu
 		except Exception as e:
 			print(f"❌ Erro ao reconstruir objeto Aluno: {e}")
 			return None
@@ -1000,35 +1060,169 @@ class RepositorioGeral:
 			raise ValueError("Erro ao listar frequência por diário no banco de dados.")
 		
 	def buscar_demandas_por_escola(self, escola_input):
-			try:
-				self.connect.row_factory = sqlite3.Row
-				cursor = self.connect.cursor()
-				id_esc = self._limpar_id(escola_input)
-				sql = '''SELECT * FROM demanda 
-						JOIN demanda_infraestrutura ON demanda.id_demanda = demanda_infraestrutura.id_demanda 
-						WHERE demanda_infraestrutura.id_escola = ?'''
-				cursor.execute(sql, (id_esc,))
-				rows = cursor.fetchall()
-				demandas_encontradas = []
-				for row in rows:
-					from src.models.demanda import Demanda
-					escola_obj = self.buscar_escola_por_id(row["id_escola"])
-					demanda_obj = Demanda(
-						id_demanda=row["id_demanda"],
-						id_escola=row["id_escola"],
-						escola=escola_obj,
-						titulo=row["titulo"],
-						descricao=row["descricao"],
-						valor_estimado=row["valor_estimado"],
-						tipo_demanda=row["tipo_demanda"],
-						status=row["status"],
-						data_solicitacao=row["data_solicitacao"],
-						prioridade=row["prioridade"]
-					)
-					demandas_encontradas.append(demanda_obj)
-				return demandas_encontradas
-			except Exception as e:
-				print(f"❌ Erro ao buscar demandas da escola {escola_input}: {e}")
+		try:
+			self.connect.row_factory = sqlite3.Row
+			cursor = self.connect.cursor()
+			id_esc = self._limpar_id(escola_input)
+			sql = '''SELECT * FROM demanda 
+				JOIN demanda_infraestrutura ON demanda.id_demanda = demanda_infraestrutura.id_demanda 
+				WHERE demanda_infraestrutura.id_escola = ?'''
+			cursor.execute(sql, (id_esc,))
+			rows = cursor.fetchall()
+			demandas_encontradas = []
+			for row in rows:
+				from src.models.demanda import Demanda
+				escola_obj = self.buscar_escola_por_id(row["id_escola"], incluir_gestor=False, incluir_turmas=False)
+				demanda_obj = Demanda(
+					id_demanda=row["id_demanda"],
+					id_escola=row["id_escola"],
+					escola=escola_obj,
+					titulo=row["titulo"],
+					descricao=row["descricao"],
+					valor_estimado=row["valor_estimado"],
+					tipo_demanda=row["tipo_demanda"],
+					status=row["status"],
+					data_solicitacao=row["data_solicitacao"],
+					prioridade=row["prioridade"]
+				)
+				demandas_encontradas.append(demanda_obj)
+			return demandas_encontradas
+		except Exception as e:
+			print(f"❌ Erro ao buscar demandas da escola {escola_input}: {e}")
+			return []
+		finally:
+			self.connect.row_factory = None
+
+	def buscar_usuario_por_id(self, id_busca):
+		"""Retorna um objeto Usuário (Secretario, Gestor, Professor ou Aluno) pelo id genérico."""
+		try:
+			self.connect.row_factory = sqlite3.Row
+			cursor = self.connect.cursor()
+			cursor.execute("SELECT tipo FROM usuario WHERE id_usuario = ?", (id_busca,))
+			row = cursor.fetchone()
+			if not row:
+				return None
+			tipo = row["tipo"]
+			if tipo == "SECRETARIO":
+				return self.buscar_secretario_por_id(id_busca)
+			elif tipo == "GESTOR":
+				return self.buscar_gestor_por_id(id_busca)
+			elif tipo == "PROFESSOR":
+				return self.buscar_professor_por_id(id_busca)
+			elif tipo == "ALUNO":
+				return self.buscar_aluno_por_id(id_busca)
+			else:
+				return None
+		except Exception as e:
+			print(f"❌ Erro ao buscar usuário por id {id_busca}: {e}")
+			return None
+		finally:
+			self.connect.row_factory = None
+
+	def vincular_gestor_escola(self, id_gestor, id_escola):
+		"""Vincula (ou atualiza) um gestor a uma escola e atualiza o campo correspondente na escola."""
+		try:
+			id_g = self._limpar_id(id_gestor)
+			id_e = self._limpar_id(id_escola)
+			self.cursor.execute("UPDATE gestor SET id_escola = ? WHERE id_usuario = ?", (id_e, id_g))
+			# Também atualiza o campo id_gestor na tabela escola
+			if id_e is not None:
+				self.cursor.execute("UPDATE escola SET id_gestor = ? WHERE id_escola = ?", (id_g, id_e))
+			self.connect.commit()
+		except Exception as e:
+			self.connect.rollback()
+			print(f"❌ Erro ao vincular gestor {id_gestor} à escola {id_escola}: {e}")
+			raise
+
+	def vincular_escola_municipio(self, id_escola, id_municipio):
+		"""Associa ou desassocia uma escola a um município (aceita None para desassociação)."""
+		try:
+			id_e = self._limpar_id(id_escola)
+			id_m = self._limpar_id(id_municipio)
+			self.cursor.execute("UPDATE escola SET id_municipio = ? WHERE id_escola = ?", (id_m, id_e))
+			self.connect.commit()
+		except Exception as e:
+			self.connect.rollback()
+			print(f"❌ Erro ao vincular escola {id_escola} ao município {id_municipio}: {e}")
+			raise
+
+	def atualizar_status_usuario(self, id_usuario, status_bool: bool):
+		"""Atualiza o campo de status (ativo/inativo) do usuário."""
+		try:
+			status_val = 1 if status_bool else 0
+			self.cursor.execute("UPDATE usuario SET status = ? WHERE id_usuario = ?", (status_val, id_usuario))
+			self.connect.commit()
+		except Exception as e:
+			self.connect.rollback()
+			print(f"❌ Erro ao atualizar status do usuário {id_usuario}: {e}")
+			raise
+
+	def atualizar_saldos(self, municipio_obj, escola_obj):
+		"""Persiste os saldos (verba) do município e da escola no banco."""
+		try:
+			id_mun = self._limpar_id(getattr(municipio_obj, '_id_municipio', None) or getattr(municipio_obj, 'id_municipio', None))
+			id_esc = self._limpar_id(getattr(escola_obj, '_id_escola', None) or getattr(escola_obj, 'id_escola', None))
+			verba_mun = getattr(municipio_obj, 'verba_disponivel_municipio', None)
+			verba_esc = getattr(escola_obj, 'verba_disponivel_escola', None)
+			if id_mun is not None and verba_mun is not None:
+				self.cursor.execute("UPDATE municipio SET verba_disponivel_municipio = ? WHERE id_municipio = ?", (verba_mun, id_mun))
+			if id_esc is not None and verba_esc is not None:
+				self.cursor.execute("UPDATE escola SET verba_disponivel_escola = ? WHERE id_escola = ?", (verba_esc, id_esc))
+			self.connect.commit()
+		except Exception as e:
+			self.connect.rollback()
+			print(f"❌ Erro ao atualizar saldos: {e}")
+			raise
+
+	def atualizar_status_demanda(self, id_demanda, novo_status: str):
+		"""Atualiza o status de uma demanda pelo seu id."""
+		try:
+			self.cursor.execute("UPDATE demanda SET status = ? WHERE id_demanda = ?", (novo_status, id_demanda))
+			self.connect.commit()
+		except Exception as e:
+			self.connect.rollback()
+			print(f"❌ Erro ao atualizar status da demanda {id_demanda}: {e}")
+			raise
+
+	def salvar_noticia(self, id_escola, titulo, conteudo, autor=None):
+		"""Persiste uma notícia/comunicado ligado a uma escola."""
+		try:
+			dados = {
+				"id_escola": self._limpar_id(id_escola),
+				"titulo": titulo,
+				"conteudo": conteudo,
+				"data": __import__('datetime').date.today().strftime("%d/%m/%Y"),
+				"autor": autor
+			}
+			self.cursor.execute('''INSERT INTO noticia(id_escola, titulo, conteudo, data, autor) VALUES (:id_escola, :titulo, :conteudo, :data, :autor)''', dados)
+			self.connect.commit()
+			return self.cursor.lastrowid
+		except Exception as e:
+			self.connect.rollback()
+			print(f"❌ Erro ao salvar notícia para escola {id_escola}: {e}")
+			raise
+
+	def buscar_noticias_por_escola(self, id_escola):
+		"""Retorna lista de dicionários com notícias para a escola informada (mais recentes primeiro)."""
+		try:
+			self.connect.row_factory = sqlite3.Row
+			cursor = self.connect.cursor()
+			id_limpo = self._limpar_id(id_escola)
+			if id_limpo is None:
 				return []
-			finally:
-				self.connect.row_factory = None
+			cursor.execute("SELECT * FROM noticia WHERE id_escola = ? ORDER BY id_noticia DESC", (id_limpo,))
+			rows = cursor.fetchall()
+			result = []
+			for r in rows:
+				result.append({
+					"titulo": r["titulo"],
+					"conteudo": r["conteudo"],
+					"data": r["data"],
+					"autor": r["autor"]
+				})
+			return result
+		except Exception as e:
+			print(f"❌ Erro ao buscar notícias da escola {id_escola}: {e}")
+			return []
+		finally:
+			self.connect.row_factory = None

@@ -203,24 +203,48 @@ class Aluno(Usuario):
         
         return "\n".join(exibicao)
 
-    def adicionar_nota(self, nota: Nota):
+    def adicionar_nota(self, disciplina_or_nota, valor=None):
         """
-        Adiciona uma nota do aluno em uma disciplina especifica.
-        
-        Metodo auxiliar chamado pelo professor para inserir notas. Cada disciplina
-        pode ter multiplas notas que serao usadas para calculo de media.
-        
-        Args:
-            disciplina (str): Nome da disciplina.
-            valor (float): Valor da nota (deve estar entre 0 e 10).
-        
-        Raises:
-            ValueError: Se a nota nao estiver no intervalo de 0 a 10.
+        Adiciona uma nota ao aluno. Aceita dois usos:
+        - adicionar_nota(disciplina:str, valor:float)
+        - adicionar_nota(nota: Nota)
+
+        Atualiza tanto o dicionário interno `_notas` usado em alguns testes
+        quanto a lista `notas` que armazena objetos `Nota`.
         """
-        if not (0 <= nota.valor <= 10):
-            raise ValueError("Erro: A nota deve ser um valor entre 0 e 10.")
-        
-        self.notas.append(nota)
+        # garante existência das estruturas internas usadas pelos testes
+        if not hasattr(self, '_notas') or self._notas is None:
+            self._notas = {}
+        if not hasattr(self, 'notas') or self.notas is None:
+            self.notas = []
+
+        # caso receba um objeto Nota
+        if isinstance(disciplina_or_nota, Nota):
+            nota_obj = disciplina_or_nota
+            if not (0 <= nota_obj.valor <= 10):
+                raise ValueError("Erro: A nota deve ser um valor entre 0 e 10.")
+        else:
+            # recebe disciplina e valor
+            disciplina = disciplina_or_nota
+            if valor is None:
+                raise TypeError("Uso inválido: fornecer disciplina e valor ou um objeto Nota")
+            try:
+                valor_num = float(valor)
+            except Exception:
+                raise ValueError("Erro: Valor da nota inválido.")
+            if not (0 <= valor_num <= 10):
+                raise ValueError("Erro: A nota deve ser um valor entre 0 e 10.")
+            # cria um objeto Nota mínimo para manter compatibilidade
+            nota_obj = Nota(None, getattr(self, 'id_usuario', None), getattr(getattr(self, '_turma_associada', None), 'id_turma', None), disciplina, valor_num, None, None, aluno=self)
+
+        # atualiza estruturas
+        # lista de objetos
+        self.notas.append(nota_obj)
+        # dicionário _notas: disciplina -> lista de valores
+        disc = getattr(nota_obj, 'disciplina', None)
+        if disc not in self._notas:
+            self._notas[disc] = []
+        self._notas[disc].append(nota_obj.valor)
 
     def ver_noticias(self):
         """
@@ -236,12 +260,37 @@ class Aluno(Usuario):
         if not self.turma_associada or isinstance(self.turma_associada, str):
             return "Aluno sem turma vinculada. Não é possível acessar o mural."
 
-        escola = getattr(self.turma_associada, 'escola', None)
-        
+        # Tentativas de encontrar o objeto escola na Turma, cobrindo diferentes nomes usados no código
+        escola = None
+        if hasattr(self.turma_associada, 'escola'):
+            escola = getattr(self.turma_associada, 'escola')
+        elif hasattr(self.turma_associada, '_escola'):
+            escola = getattr(self.turma_associada, '_escola')
+        elif hasattr(self.turma_associada, 'escola_associada'):
+            escola = getattr(self.turma_associada, 'escola_associada')
+
+        # Se recebemos apenas um ID, tentamos buscar pelo repositório
+        if isinstance(escola, (int, str)):
+            try:
+                from src.database.RepositorioGeral import RepositorioGeral
+                repo = RepositorioGeral()
+                escola = repo.buscar_escola_por_id(escola)
+            except Exception:
+                escola = None
+
         if not escola:
             return "Erro: Escola não encontrada para esta turma."
 
-        mural = escola._mural_oficial
+        mural = getattr(escola, '_mural_oficial', None) or []
+
+        # Se não houver notícias em memória, buscar no repositório (persistência)
+        if not mural:
+            try:
+                from src.database.RepositorioGeral import RepositorioGeral
+                repo = RepositorioGeral()
+                mural = repo.buscar_noticias_por_escola(getattr(escola, 'id_escola', None)) or []
+            except Exception:
+                mural = []
 
         if not mural:
             return f"O mural da escola {escola.nome} está vazio no momento."

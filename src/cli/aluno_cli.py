@@ -32,9 +32,10 @@ def exibir_cabecalho_aluno(aluno: Aluno):
         else:
             turma_info = f"ID: {turma_attr}"
 
+    matricula = getattr(aluno, 'id_matricula', None) or getattr(aluno, '_matricula', 'N/A')
     console.print(Panel(
         f"[bold green]STUDYFORGE - ÁREA DO ESTUDANTE[/bold green]\n"
-        f"[cyan]Estudante:[/cyan] {aluno.nome} | [cyan]Matrícula:[/cyan] {getattr(aluno, '_id_matricula', 'N/A')}\n"
+        f"[cyan]Estudante:[/cyan] {aluno.nome} | [cyan]Matrícula:[/cyan] {matricula}\n"
         f"[cyan]Turma:[/cyan] {turma_info} | [cyan]Frequência:[/cyan] {getattr(aluno, 'frequencia', 0)}%",
         border_style="green",
         expand=False
@@ -77,18 +78,32 @@ def comando_frequencia(aluno: Aluno):
             console.print(f"[red]Erro ao carregar frequência: {e}[/red]")
     input("\nPressione [Enter] para voltar ao menu...")
 
+def comando_ver_noticias(aluno: Aluno):
+    """Exibe os comunicados do mural da escola do aluno."""
+    console.clear()
+    try:
+        # Recarrega aluno do repositório para garantir sessão atualizada
+        aluno_atual = repo.buscar_aluno_por_id(getattr(aluno, '_id_usuario', aluno.id_usuario)) or aluno
+        noticias = aluno_atual.ver_noticias()
+        console.print(Panel(noticias, title="📢 Comunicados da Escola", border_style="magenta", expand=False))
+    except Exception as e:
+        console.print(f"[red]Erro ao carregar comunicados: {e}[/red]")
+
+    input("\nPressione [Enter] para voltar ao menu...")
+
 # --- MENU INTERATIVO ---
 
 def menu_interativo_aluno(aluno: Aluno):
     while True:
         exibir_cabecalho_aluno(aluno)
         
-        print("\n[1] Ver Perfil")
+        print("[1] Ver Perfil")
         print("[2] Consultar Boletim")
         print("[3] Minha Frequência")
+        print("[4] Ver Comunicados")
         print("[0] Sair")
         
-        opcao = Prompt.ask("\nEscolha uma opção", choices=["0", "1", "2", "3"], default="0")
+        opcao = Prompt.ask("\nEscolha uma opção", choices=["0", "1", "2", "3", "4"], default="0")
 
         if opcao == "1":
             comando_perfil(aluno)
@@ -96,5 +111,7 @@ def menu_interativo_aluno(aluno: Aluno):
             comando_boletim(aluno)
         elif opcao == "3":
             comando_frequencia(aluno)
+        elif opcao == "4":
+            comando_ver_noticias(aluno)
         elif opcao == "0":
             break

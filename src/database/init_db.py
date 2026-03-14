@@ -57,7 +57,8 @@ def popular_banco():
             repo.salvar_usuario(gestor)
 
         # --- 5. TURMA ---
-        turma = Turma(None, "Oitavo Ano B", 2026, esc, "MANHÃ", 35)
+        # Criar turma vinculando corretamente ao id da escola e mantendo referência ao objeto
+        turma = Turma(None, "Oitavo Ano B", 2026, esc.id_escola, "MANHÃ", 35, escola=esc)
         repo.salvar_turma(turma)
 
         # --- 6. PROFESSORES ---

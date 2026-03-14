@@ -42,6 +42,19 @@ console = Console()
 app = typer.Typer(help="Painel Administrativo do Secretário de Educação")
 repo = RepositorioGeral()
 
+
+def to_int_or_none(valor):
+    """Converte string para int de forma segura; retorna None se inválido."""
+    try:
+        if valor is None:
+            return None
+        s = str(valor).strip()
+        if s == "":
+            return None
+        return int(s)
+    except Exception:
+        return None
+
 # --- AUXILIARES ---
 
 def exibir_cabecalho(sec: Secretario):
@@ -111,7 +124,7 @@ def exibir_tabela_gestores(sec: Secretario):
             
             if gestor:
                 encontrou = True
-                status = "[green]● Ativo[/green]" if gestor.status else "[red]○ Inativo[/red]"
+                status = "[green]● Ativo[/green]" if getattr(gestor, '_status', True) else "[red]○ Inativo[/red]"
                 table.add_row(
                     str(gestor.id_usuario),
                     gestor.nome,
@@ -182,7 +195,7 @@ def comando_gerenciar_unidades(sec: Secretario):
     
     exibir_tabela_escolas(sec)
     
-    acao = Prompt.ask("\nO que deseja fazer?", choices=["ADICIONAR", "REMOVER", "VOLTAR"], default="VOLTAR").upper()
+    acao = Prompt.ask("\nO que deseja fazer?", choices=["ADICIONAR", "REMOVER", "VER_GESTOR", "VOLTAR"], default="VOLTAR").upper()
     
     if acao == "VOLTAR":
         return
@@ -200,23 +213,46 @@ def comando_gerenciar_unidades(sec: Secretario):
                 )
                 
                 resultado = sec.gerenciar_unidades("ADICIONAR", nova_escola)
-                
+
                 if "Sucesso" in resultado:
-                    # AJUSTE AQUI: Remova o segundo argumento (sec.municipio_responsavel.id_municipio)
-                    # O repositório provavelmente extrai o ID do próprio objeto 'nova_escola'
-                    repo.salvar_escola(nova_escola) 
-                    
-                    console.print(f"[bold green]✅ Unidade '{nome_escola}' cadastrada com sucesso![/bold green]")
+                    with console.status("[bold green]Persistindo nova escola no banco..."):
+                        try:
+                            repo.salvar_escola(nova_escola)
+                            # verifica se foi persistida
+                            esc_salva = repo.buscar_escola_por_id(nova_escola.id_escola)
+                            if esc_salva is None:
+                                console.print(f"[bold red]❌ Falha ao persistir unidade '{nome_escola}' no banco.[/bold red]")
+                            else:
+                                # garante que o objeto tenha referência ao município em runtime
+                                try:
+                                    nova_escola._municipio = sec.municipio_responsavel
+                                    sec.municipio_responsavel.cadastrar_escola(nova_escola)
+                                except Exception:
+                                    pass
+                                console.print(f"[bold green]✅ Unidade '{nome_escola}' cadastrada com sucesso! (ID: {nova_escola.id_escola})[/bold green]")
+                        except Exception as e:
+                            console.print(f"[bold red]❌ Erro ao salvar escola: {e}[/bold red]")
                 else:
                     console.print(f"[bold red]⚠️ {resultado}[/bold red]")
 
         elif acao == "REMOVER":
             escola_id = Prompt.ask("Digite o ID da Escola para remover")
-            escola_alvo = repo.buscar_escola_por_id(int(escola_id))
+            escola_id_int = to_int_or_none(escola_id)
+            if escola_id_int is None:
+                console.print("[red]❌ ID inválido informado.[/red]")
+                return
+
+            escola_alvo = repo.buscar_escola_por_id(escola_id_int)
             
             if not escola_alvo:
                 console.print("[red]❌ Escola não encontrada.[/red]")
                 return
+            # Exibe gestor atual da instituição para confirmação
+            gestor_atual = getattr(escola_alvo, '_gestor_atual', None) or getattr(escola_alvo, 'gestor_atual', None)
+            if gestor_atual:
+                console.print(Panel(f"Gestor atual: {gestor_atual.nome} (ID: {getattr(gestor_atual, 'id_usuario', getattr(gestor_atual, '_id', 'N/A'))})\nStatus: {'Ativo' if getattr(gestor_atual, 'status', True) else 'Inativo'}", title="Informação da Escola", border_style="green"))
+            else:
+                console.print(Panel("Gestor atual: Vago", title="Informação da Escola", border_style="yellow"))
 
             with console.status("[bold yellow]Removendo unidade..."):
                 resultado = sec.gerenciar_unidades("REMOVER", escola_alvo)
@@ -226,6 +262,30 @@ def comando_gerenciar_unidades(sec: Secretario):
                 else:
                     console.print(f"[bold red]⚠️ {resultado}[/bold red]")
                 
+        elif acao == "VER_GESTOR":
+            escola_id = Prompt.ask("Digite o ID da Escola para ver o gestor")
+            escola_id_int = to_int_or_none(escola_id)
+            if escola_id_int is None:
+                console.print("[red]❌ ID inválido informado.[/red]")
+                input("\nPressione [Enter] para voltar...")
+                return
+
+            escola_alvo = repo.buscar_escola_por_id(escola_id_int)
+            if not escola_alvo:
+                console.print("[red]❌ Escola não encontrada.[/red]")
+                return
+
+            gestor_atual = getattr(escola_alvo, '_gestor_atual', None) or getattr(escola_alvo, 'gestor_atual', None)
+            if gestor_atual:
+                console.print(Panel(
+                    f"Nome: {gestor_atual.nome}\nID: {getattr(gestor_atual, 'id_usuario', getattr(gestor_atual, '_id', 'N/A'))}\nCPF: {getattr(gestor_atual, 'cpf', 'N/A')}\nE-mail: {getattr(gestor_atual, 'email', 'N/A')}\nStatus: {'Ativo' if getattr(gestor_atual, 'status', True) else 'Inativo'}",
+                    title=f"Gestor da Escola: {escola_alvo.nome}", border_style="cyan"
+                ))
+            else:
+                console.print(Panel("Gestor atual: Vago", title=f"Gestor da Escola: {escola_alvo.nome}", border_style="yellow"))
+
+            input("\nPressione [Enter] para continuar...")
+            return
     except Exception as e:
         console.print(f"[red]Erro na operação: {e}[/red]")
     
@@ -243,40 +303,78 @@ def comando_cadastrar_gestor(sec: Secretario):
 
     escola_id = Prompt.ask("\nDigite o ID da Escola que este gestor irá administrar")
     
-    # 2. Coleta de dados pessoais (Removida a repetição do escola_id aqui)
-    nome = Prompt.ask("Nome Completo")
-    cpf = Prompt.ask("CPF (xxx.xxx.xxx-xx)")
-    email = Prompt.ask("E-mail Institucional")
-    senha = Prompt.ask("Senha (mín. 8 caracteres)", password=True, show_default=False)
-    telefone = Prompt.ask("Telefone (11 dígitos)")
-    data_nasc = Prompt.ask("Data de Nascimento (DD/MM/AAAA)")
-    
+    # Pergunta se deseja criar novo gestor ou selecionar existente
+    escolha = Prompt.ask("Deseja criar um novo gestor ou selecionar um existente?", choices=["NOVO", "SELECIONAR"], default="NOVO")
+
     try:
-        with console.status("[bold green]Processando cadastro..."):
-            escola_alvo = repo.buscar_escola_por_id(int(escola_id))
-            
-            if not escola_alvo:
-                console.print("[red]❌ Erro: Escola não encontrada.[/red]")
+        escola_alvo = repo.buscar_escola_por_id(int(escola_id))
+        if not escola_alvo:
+            console.print("[red]❌ Erro: Escola não encontrada.[/red]")
+            input("\nPressione [Enter] para voltar...")
+            return
+
+        if escolha == "SELECIONAR":
+            # lista gestores disponíveis e permite escolher um
+            if not exibir_tabela_gestores(sec):
+                console.print("[yellow]Nenhum gestor disponível para seleção.[/yellow]")
                 input("\nPressione [Enter] para voltar...")
                 return
 
+            gestor_id = Prompt.ask("Digite o ID do Gestor a ser vinculado")
+            gestor_obj = repo.buscar_usuario_por_id(to_int_or_none(gestor_id))
             from src.models.gestor import Gestor
-            novo_gestor = Gestor(
-                None, nome, cpf, email, senha, telefone, data_nasc, escola_alvo
-            )
+            if not gestor_obj or not isinstance(gestor_obj, Gestor):
+                console.print("[red]❌ Gestor inválido ou não encontrado.[/red]")
+                input("\nPressione [Enter] para voltar...")
+                return
+
+            # só permite vincular se gestor não tiver escola associada
+            if getattr(gestor_obj, 'escola_associada', None) is not None or getattr(gestor_obj, '_escola_associada', None) is not None:
+                console.print("[red]❌ Este gestor já está vinculado a uma escola.[/red]")
+                input("\nPressione [Enter] para voltar...")
+                return
+
+            resultado_modelo = sec.realizar_cadastro(gestor_obj, escola_alvo)
+            if "Sucesso" in resultado_modelo:
+                try:
+                    # vincula no repositório
+                    repo.vincular_gestor_escola(gestor_obj.id_usuario, escola_alvo.id_escola)
+                    console.print(f"\n[bold green]✅ {resultado_modelo} (ID: {gestor_obj.id_usuario})[/bold green]")
+                except Exception as e:
+                    console.print(f"[bold red]❌ Erro ao vincular gestor: {e}[/bold red]")
+            else:
+                console.print(f"\n[bold red]⚠️ {resultado_modelo}[/bold red]")
+
+        else:
+            # coleta dados para criar novo gestor
+            nome = Prompt.ask("Nome Completo")
+            cpf = Prompt.ask("CPF (xxx.xxx.xxx-xx)")
+            email = Prompt.ask("E-mail Institucional")
+            senha = Prompt.ask("Senha (mín. 8 caracteres)", password=True, show_default=False)
+            telefone = Prompt.ask("Telefone (11 dígitos)")
+            data_nasc = Prompt.ask("Data de Nascimento (DD/MM/AAAA)")
+
+            from src.models.gestor import Gestor
+            novo_gestor = Gestor(None, nome, cpf, email, senha, telefone, data_nasc, None)
 
             resultado_modelo = sec.realizar_cadastro(novo_gestor, escola_alvo)
-
             if "Sucesso" in resultado_modelo:
-                repo.salvar_usuario(novo_gestor) 
-                repo.vincular_gestor_escola(novo_gestor.id_usuario, escola_alvo.id_escola)
-                console.print(f"\n[bold green]✅ {resultado_modelo}[/bold green]")
+                try:
+                    repo.salvar_usuario(novo_gestor)
+                    g_salvo = repo.buscar_usuario_por_id(novo_gestor.id_usuario)
+                    if g_salvo is None:
+                        console.print(f"[bold red]❌ Gestor salvo, mas não encontrado no repositório (ID: {novo_gestor.id_usuario}).[/bold red]")
+                    else:
+                        repo.vincular_gestor_escola(novo_gestor.id_usuario, escola_alvo.id_escola)
+                        console.print(f"\n[bold green]✅ {resultado_modelo} (ID: {novo_gestor.id_usuario})[/bold green]")
+                except Exception as e:
+                    console.print(f"[bold red]❌ Erro ao salvar gestor: {e}[/bold red]")
             else:
                 console.print(f"\n[bold red]⚠️ {resultado_modelo}[/bold red]")
 
     except Exception as e:
         console.print(f"[red]Erro ao realizar cadastro: {e}[/red]")
-    
+
     input("\nPressione [Enter] para continuar...")
 
 def comando_status_gestor(sec: Secretario):
@@ -299,7 +397,7 @@ def comando_status_gestor(sec: Secretario):
         if not gestor or not isinstance(gestor, Gestor):
             console.print("[red]❌ Erro: O ID informado não pertence a um Gestor válido.[/red]")
         else:
-            status_atual = "Ativo" if gestor.status else "Inativo"
+            status_atual = "Ativo" if getattr(gestor, '_status', True) else "Inativo"
             console.print(f"\nSelecionado: [cyan]{gestor.nome}[/cyan] | Status Atual: [bold]{status_atual}[/bold]")
             
             novo_status_str = Prompt.ask("Deseja alterar para", choices=["ATIVAR", "DESATIVAR", "CANCELAR"], default="CANCELAR").upper()
@@ -329,11 +427,22 @@ def comando_comunicado(sec: Secretario):
     console.print("\n[bold]Novo Comunicado Global[/bold]")
     titulo = Prompt.ask("Título")
     conteudo = Prompt.ask("Conteúdo")
-    
+
     with console.status("[bold blue]Enviando..."):
         try:
-            # Sincroniza escolas antes de enviar
-            sec.municipio_responsavel.escolas_situadas = repo.buscar_escolas_por_municipio(sec.municipio_responsavel.id_municipio)
+            # Sincroniza escolas antes de enviar (atribui ao campo interno, não à property somente-leitura)
+            escolas_do_repo = repo.buscar_escolas_por_municipio(sec.municipio_responsavel.id_municipio)
+            try:
+                sec.municipio_responsavel._escolas_situadas = escolas_do_repo
+            except Exception:
+                # fallback: atualiza lista existente de forma segura
+                current = getattr(sec.municipio_responsavel, '_escolas_situadas', None)
+                if current is None:
+                    sec.municipio_responsavel._escolas_situadas = list(escolas_do_repo)
+                else:
+                    current.clear()
+                    current.extend(escolas_do_repo)
+
             resultado = sec.enviar_mensagem(titulo, conteudo)
             console.print(f"\n[bold green]✅ {resultado}[/bold green]")
         except Exception as e:
@@ -344,24 +453,52 @@ def comando_comunicado(sec: Secretario):
 def comando_pagamento(sec: Secretario):
     """Aprova e paga demandas."""
     console.clear()
+    # Antes de pedir inputs, mostra as escolas do município e IDs de demandas
+    try:
+        escolas = repo.buscar_escolas_por_municipio(sec.municipio_responsavel.id_municipio)
+        if not escolas:
+            console.print("[yellow]Nenhuma escola vinculada ao seu município encontrada.[/yellow]")
+        else:
+            table = Table(title=f"Escolas e Demandas - {sec.municipio_responsavel.nome}", show_lines=True)
+            table.add_column("ID Escola", style="cyan", no_wrap=True)
+            table.add_column("Nome da Escola", style="white")
+            table.add_column("Demandas (IDs)", style="magenta")
+
+            for esc in escolas:
+                demandas = repo.buscar_demandas_por_escola(esc.id_escola) or []
+                ids = ", ".join([getattr(d, 'id_demanda', str(d)) for d in demandas]) if demandas else "-"
+                table.add_row(str(esc.id_escola), str(esc.nome), ids)
+
+            console.print(table)
+
+    except Exception as e:
+        console.print(f"[red]Erro ao listar escolas/demandas: {e}[/red]")
+
     escola_id = Prompt.ask("Digite o ID da Escola")
     demanda_id = Prompt.ask("Digite o ID da Demanda")
 
+    escola_id_int = to_int_or_none(escola_id)
+
     try:
-        escola = repo.buscar_escola_por_id(int(escola_id))
+        escola = repo.buscar_escola_por_id(escola_id_int)
         if not escola:
             console.print("[red]❌ Escola não encontrada.[/red]")
-        else:
-            console.print(f"\n[yellow]Analisando demanda...[/yellow]")
-            aviso = sec.administrar_solicitacoes(escola, demanda_id, "APROVAR")
-            console.print(f"[blue]{aviso}[/blue]")
+            input("\nPressione [Enter] para continuar...")
 
-            if "aprovada" in aviso.lower():
-                confirmacao = sec.gerenciar_verba(escola, demanda_id)
-                # Persistência no Banco
-                repo.atualizar_saldos(sec.municipio_responsavel, escola)
-                repo.atualizar_status_demanda(demanda_id, "CONCLUIDA / PAGA")
-                console.print(f"[bold yellow]💰 {confirmacao}[/bold yellow]")
+        # Processa a aprovação/pagamento da demanda normalmente
+
+        console.print(f"\n[yellow]Analisando demanda...[/yellow]")
+        aviso = sec.administrar_solicitacoes(escola, demanda_id, "APROVAR")
+        console.print(f"[blue]{aviso}[/blue]")
+
+        if "aprovada" in aviso.lower():
+            confirmacao = sec.gerenciar_verba(escola, demanda_id)
+            # Persistência no Banco
+            repo.atualizar_saldos(sec.municipio_responsavel, escola)
+            # tenta converter id de demanda para int quando possível
+            demanda_id_limpa = to_int_or_none(demanda_id) or demanda_id
+            repo.atualizar_status_demanda(demanda_id_limpa, "CONCLUIDA / PAGA")
+            console.print(f"[bold yellow]💰 {confirmacao}[/bold yellow]")
     except Exception as e:
         console.print(f"[red]Erro no processamento: {e}[/red]")
     

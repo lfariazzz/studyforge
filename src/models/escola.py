@@ -24,9 +24,13 @@ class Escola:
         _turmas_existentes (list[Turma]): Lista de turmas cadastradas.
         _professores_empregados (list): Lista de professores vinculados."""
     
-    def __init__(self, nome, id_endereco, id_escola, gestor_atual, verba_disponivel_escola, id_municipio, capacidade_infraestrutura, municipio=None):
+    def __init__(self, nome, id_endereco=None, id_escola=None, gestor_atual=None, verba_disponivel_escola=0.0, id_municipio=None, capacidade_infraestrutura=0, municipio=None, **kwargs):
         self._nome = nome
-        self._id_endereco = id_endereco
+        # accept either `id_endereco` or `id_localizacao` from DB rows
+        if id_endereco is None and 'id_localizacao' in kwargs:
+            self._id_endereco = kwargs.get('id_localizacao')
+        else:
+            self._id_endereco = id_endereco
         self._id_escola = id_escola
         self._gestor_atual = gestor_atual # espera a intancia da classe Gestor
         self._verba_disponivel_escola = float(verba_disponivel_escola)
