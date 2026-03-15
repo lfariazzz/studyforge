@@ -1,21 +1,7 @@
-"""
-Módulo responsável por adicionar os sub‑comandos específicos de cada
-perfil à aplicação Typer principal.
+"""Registro dinâmico dos subcomandos de perfis da CLI."""
 
-Cada grupo de comandos (aluno, professor, etc.) reside num ficheiro próprio
-(e.g. aluno_commands.py).  Esta rotina apenas importa dinamicamente esses
-módulos e regista os `Typer` internos no `app` passado como argumento.
-"""
-
-from typing import List
 import importlib
 import typer
-from src.cli.secretario_cli import app as secretario_app
-from src.cli.aluno_cli import app as aluno_app
-from src.cli.professor_cli import app as professor_app
-
-def registrar_comandos(main_app):
-    main_app.add_typer(secretario_app, name="secretario")
 
 PERFIS = ["aluno", "professor", "gestor", "secretario"]
 

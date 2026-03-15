@@ -201,16 +201,32 @@ class GerenciadorSessao:
                 dados = json.load(f)
                 from src.database.RepositorioGeral import RepositorioGeral
                 repo = RepositorioGeral()
-                usuario_data = repo.buscar_usuario_por_cpf(dados['cpf'])
-                
-                # Usa a mesma lógica que você já tem no auth_system para criar o objeto
-                # Para evitar import circular, você pode buscar o auth_system aqui
-                from src.cli.auth import auth_system 
-                self._usuario_memoria = auth_system._criar_objeto_usuario(usuario_data)
+                self._usuario_memoria = repo.buscar_usuario_por_cpf(dados['cpf'])
+                self._tipo_memoria = dados.get("tipo")
                 return self._usuario_memoria
+        return None
+
+    def esta_logado(self):
+        """Indica se existe usuário autenticado em memória ou em arquivo de sessão."""
+        if self._usuario_memoria is not None:
+            return True
+        return os.path.exists(self.caminho_sessao)
+
+    def obter_tipo_usuario(self):
+        """Retorna o tipo salvo em memória ou no arquivo de sessão."""
+        if self._tipo_memoria:
+            return self._tipo_memoria
+        if os.path.exists(self.caminho_sessao):
+            try:
+                with open(self.caminho_sessao, "r") as f:
+                    dados = json.load(f)
+                    return dados.get("tipo")
+            except Exception:
+                return None
         return None
 
     def limpar_sessao(self):
         self._usuario_memoria = None
+        self._tipo_memoria = None
         if os.path.exists(self.caminho_sessao):
             os.remove(self.caminho_sessao)

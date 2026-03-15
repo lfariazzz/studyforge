@@ -879,9 +879,10 @@ class RepositorioGeral:
 						id_turma=row["id_turma"],
 						nome=row["nome"],
 						ano_letivo=row["ano_letivo"],
-						escola_associada=escola_obj,
+						id_escola=row["id_escola"],
 						turno=row["turno"],
-						capacidade_maxima=row["capacidade_maxima"]
+						capacidade_maxima=row["capacidade_maxima"],
+						escola=escola_obj,
 					)
 					turmas_encontradas.append(turma_obj)
 				return turmas_encontradas
@@ -890,6 +891,140 @@ class RepositorioGeral:
 				return []
 			finally:
 				self.connect.row_factory = None
+
+	def listar_turmas_por_professor(self, id_professor):
+		"""Lista turmas vinculadas ao professor (com fallback para turmas da escola)."""
+		try:
+			self.connect.row_factory = sqlite3.Row
+			cursor = self.connect.cursor()
+			id_prof = self._limpar_id(id_professor)
+
+			sql = '''
+				SELECT t.id_turma
+				FROM professor_turma_alocado pta
+				JOIN turma t ON t.id_turma = pta.id_turma
+				WHERE pta.id_professor = ?
+			'''
+			cursor.execute(sql, (id_prof,))
+			rows = cursor.fetchall()
+
+			turmas = []
+			for row in rows:
+				turma_obj = self.buscar_turma_por_id(row["id_turma"])
+				if turma_obj:
+					turma_obj._alunos_matriculados = self.buscar_alunos_por_turma(turma_obj.id_turma)
+					turmas.append(turma_obj)
+
+			# Fallback: se não houver vínculo explícito em tabela de alocação,
+			# retorna as turmas da escola associada ao professor.
+			if not turmas:
+				prof = self.buscar_professor_por_id(id_prof)
+				if prof and getattr(prof, "escola_associada", None):
+					turmas = self.listar_turmas_por_escola(prof.escola_associada.id_escola)
+					for turma_obj in turmas:
+						turma_obj._alunos_matriculados = self.buscar_alunos_por_turma(turma_obj.id_turma)
+
+			return turmas
+		except Exception as e:
+			print(f"❌ Erro ao listar turmas por professor {id_professor}: {e}")
+			return []
+		finally:
+			self.connect.row_factory = None
+
+	def listar_alunos_por_turma(self, id_turma):
+		"""Alias para manter compatibilidade com a CLI."""
+		return self.buscar_alunos_por_turma(id_turma)
+
+	def criar_diario_classe(self, id_turma, id_professor, data_aula, conteudo, disciplina=None):
+		"""Cria e persiste um diário de classe e retorna o id criado."""
+		try:
+			id_turma_limpo = self._limpar_id(id_turma)
+			id_prof_limpo = self._limpar_id(id_professor)
+			disc = disciplina
+			if not disc:
+				prof = self.buscar_professor_por_id(id_prof_limpo)
+				disc = prof.area_atuacao if prof else "Sem disciplina"
+
+			diario_obj = Diario(
+				id_diario=None,
+				disciplina=disc,
+				data=data_aula,
+				conteudo=conteudo,
+				id_professor=id_prof_limpo,
+				id_turma=id_turma_limpo,
+			)
+			self.salvar_diario(diario_obj)
+			return diario_obj.id_diario
+		except Exception as e:
+			print(f"❌ Erro ao criar diário de classe: {e}")
+			raise
+
+	def registrar_frequencia(self, id_diario, id_aluno, status):
+		"""Persiste frequência de um aluno para um diário de classe."""
+		try:
+			status_norm = str(status).upper().strip()
+			if status_norm == "FALTA":
+				status_norm = "AUSENTE"
+			if status_norm not in ["PRESENTE", "AUSENTE"]:
+				raise ValueError("Status de frequência inválido.")
+
+			freq_obj = Frequencia(
+				id_frequencia=None,
+				status=status_norm,
+				id_aluno=self._limpar_id(id_aluno),
+				id_diario=self._limpar_id(id_diario),
+			)
+			self.salvar_frequencia(freq_obj)
+			return freq_obj.id_frequencia
+		except Exception as e:
+			print(f"❌ Erro ao registrar frequência: {e}")
+			raise
+
+	def buscar_professores_por_escola(self, id_escola):
+		"""Retorna professores vinculados à escola informada."""
+		try:
+			self.connect.row_factory = sqlite3.Row
+			cursor = self.connect.cursor()
+			id_esc = self._limpar_id(id_escola)
+			cursor.execute("SELECT id_usuario FROM professor WHERE id_escola = ?", (id_esc,))
+			rows = cursor.fetchall()
+			professores = []
+			for row in rows:
+				prof_obj = self.buscar_professor_por_id(row["id_usuario"])
+				if prof_obj:
+					professores.append(prof_obj)
+			return professores
+		except Exception as e:
+			print(f"❌ Erro ao buscar professores da escola {id_escola}: {e}")
+			return []
+		finally:
+			self.connect.row_factory = None
+
+	def buscar_alunos_por_escola(self, id_escola):
+		"""Retorna alunos das turmas pertencentes à escola informada."""
+		try:
+			self.connect.row_factory = sqlite3.Row
+			cursor = self.connect.cursor()
+			id_esc = self._limpar_id(id_escola)
+			sql = '''
+				SELECT a.id_usuario
+				FROM aluno a
+				JOIN turma t ON t.id_turma = a.id_turma
+				WHERE t.id_escola = ?
+			'''
+			cursor.execute(sql, (id_esc,))
+			rows = cursor.fetchall()
+			alunos = []
+			for row in rows:
+				alu_obj = self.buscar_aluno_por_id(row["id_usuario"])
+				if alu_obj:
+					alunos.append(alu_obj)
+			return alunos
+		except Exception as e:
+			print(f"❌ Erro ao buscar alunos da escola {id_escola}: {e}")
+			return []
+		finally:
+			self.connect.row_factory = None
 			
 	def buscar_nota_por_id(self, id_busca):
 			try:
@@ -978,31 +1113,63 @@ class RepositorioGeral:
 
 	def listar_diario_por_turma(self, id_turma):
 		try:
-			lista_diarios_sql = ('''SELECT * FROM diario JOIN professor ON diario.id_professor = professor.id_usuario JOIN usuario ON professor.id_usuario = usuario.id_usuario JOIN turma ON diario.id_turma = turma.id_turma WHERE turma.id_turma = (:id_turma)''')
-			self.cursor.execute(lista_diarios_sql, {"id_turma": id_turma})
-			tuplas_diario = self.cursor.fetchall()
+			self.connect.row_factory = sqlite3.Row
+			cursor = self.connect.cursor()
+			lista_diarios_sql = '''
+				SELECT id_diario, disciplina, data, conteudo, id_professor, id_turma
+				FROM diario
+				WHERE id_turma = :id_turma
+				ORDER BY data, id_diario
+			'''
+			cursor.execute(lista_diarios_sql, {"id_turma": self._limpar_id(id_turma)})
+			rows = cursor.fetchall()
 			diarios_obj = []
-			for tupla in tuplas_diario:
-				diario_obj = Diario(tupla[0], tupla[4], tupla[14], tupla[5], tupla[1], tupla[2], tupla[3])
+			for row in rows:
+				diario_obj = Diario(
+					id_diario=row["id_diario"],
+					disciplina=row["disciplina"],
+					data=row["data"],
+					conteudo=row["conteudo"],
+					id_professor=row["id_professor"],
+					id_turma=row["id_turma"],
+				)
 				diarios_obj.append(diario_obj)
 			return diarios_obj
 		except Exception as e:
 			print(f"❌ Erro no banco: {e}")
 			raise ValueError("Erro ao listar diário por turma no banco de dados.")	
+		finally:
+			self.connect.row_factory = None
 		
 	def listar_diario_por_professor(self, id_professor):
 		try:
-			lista_diarios_sql = ('''SELECT * FROM diario JOIN professor ON diario.id_professor = professor.id_usuario JOIN usuario ON professor.id_usuario = usuario.id_usuario WHERE professor.id_usuario = (:id_professor)''')
-			self.cursor.execute(lista_diarios_sql, {"id_professor": id_professor})
-			tuplas_diario = self.cursor.fetchall()
+			self.connect.row_factory = sqlite3.Row
+			cursor = self.connect.cursor()
+			lista_diarios_sql = '''
+				SELECT id_diario, disciplina, data, conteudo, id_professor, id_turma
+				FROM diario
+				WHERE id_professor = :id_professor
+				ORDER BY data DESC, id_diario DESC
+			'''
+			cursor.execute(lista_diarios_sql, {"id_professor": self._limpar_id(id_professor)})
+			rows = cursor.fetchall()
 			diarios_obj = []
-			for tupla in tuplas_diario:
-				diario_obj = Diario(tupla[0], tupla[4], tupla[14], tupla[5], tupla[1], tupla[2], tupla[3])
+			for row in rows:
+				diario_obj = Diario(
+					id_diario=row["id_diario"],
+					disciplina=row["disciplina"],
+					data=row["data"],
+					conteudo=row["conteudo"],
+					id_professor=row["id_professor"],
+					id_turma=row["id_turma"],
+				)
 				diarios_obj.append(diario_obj)
 			return diarios_obj
 		except Exception as e:
 			print(f"❌ Erro no banco: {e}")
 			raise ValueError("Erro ao listar diário por professor no banco de dados.")
+		finally:
+			self.connect.row_factory = None
 		
 	def buscar_frequencia_por_id(self, id_busca):
 		try:
@@ -1033,31 +1200,59 @@ class RepositorioGeral:
 	
 	def listar_frequencia_por_aluno(self, id_aluno):
 		try:
-			lista_frequencias_sql = ('''SELECT * FROM frequencia JOIN aluno ON frequencia.id_aluno = aluno.id_usuario JOIN usuario ON aluno.id_usuario = usuario.id_usuario JOIN diario ON frequencia.id_diario = diario.id_diario WHERE aluno.id_usuario = (:id_aluno)''')
-			self.cursor.execute(lista_frequencias_sql, {"id_aluno": id_aluno})
-			tuplas_frequencia = self.cursor.fetchall()
+			self.connect.row_factory = sqlite3.Row
+			cursor = self.connect.cursor()
+			lista_frequencias_sql = '''
+				SELECT id_frequencia, status, id_aluno, id_diario
+				FROM frequencia
+				WHERE id_aluno = :id_aluno
+				ORDER BY id_frequencia
+			'''
+			cursor.execute(lista_frequencias_sql, {"id_aluno": self._limpar_id(id_aluno)})
+			rows = cursor.fetchall()
 			frequencias_obj = []
-			for tupla in tuplas_frequencia:
-				frequencia_obj = Frequencia(tupla[0], tupla[2], tupla[9], tupla[3], tupla[1])
+			for row in rows:
+				frequencia_obj = Frequencia(
+					id_frequencia=row["id_frequencia"],
+					status=row["status"],
+					id_aluno=row["id_aluno"],
+					id_diario=row["id_diario"],
+				)
 				frequencias_obj.append(frequencia_obj)
 			return frequencias_obj
 		except Exception as e:
 			print(f"❌ Erro no banco: {e}")
 			raise ValueError("Erro ao listar frequência por aluno no banco de dados.")
+		finally:
+			self.connect.row_factory = None
 	
 	def listar_frequencia_por_diario(self, id_diario):
 		try:
-			lista_frequencias_sql = ('''SELECT * FROM frequencia JOIN aluno ON frequencia.id_aluno = aluno.id_usuario JOIN usuario ON aluno.id_usuario = usuario.id_usuario JOIN diario ON frequencia.id_diario = diario.id_diario WHERE diario.id_diario = (:id_diario)''')
-			self.cursor.execute(lista_frequencias_sql, {"id_diario": id_diario})
-			tuplas_frequencia = self.cursor.fetchall()
+			self.connect.row_factory = sqlite3.Row
+			cursor = self.connect.cursor()
+			lista_frequencias_sql = '''
+				SELECT id_frequencia, status, id_aluno, id_diario
+				FROM frequencia
+				WHERE id_diario = :id_diario
+				ORDER BY id_frequencia
+			'''
+			cursor.execute(lista_frequencias_sql, {"id_diario": self._limpar_id(id_diario)})
+			rows = cursor.fetchall()
 			frequencias_obj = []
-			for tupla in tuplas_frequencia:
-				frequencia_obj = Frequencia(tupla[0], tupla[2], tupla[9], tupla[3], tupla[1])
+			for row in rows:
+				frequencia_obj = Frequencia(
+					id_frequencia=row["id_frequencia"],
+					status=row["status"],
+					id_aluno=row["id_aluno"],
+					id_diario=row["id_diario"],
+				)
 				frequencias_obj.append(frequencia_obj)
 			return frequencias_obj
 		except Exception as e:
 			print(f"❌ Erro no banco: {e}")
 			raise ValueError("Erro ao listar frequência por diário no banco de dados.")
+		finally:
+			self.connect.row_factory = None
 		
 	def buscar_demandas_por_escola(self, escola_input):
 		try:

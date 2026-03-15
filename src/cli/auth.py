@@ -42,7 +42,7 @@ class SistemaAutenticacao:
                 return False, FormatadorCLI.erro("CPF ou senha incorretos.")
             
             # 5. STATUS: Verifica se o usuário está ativo
-            if hasattr(usuario_obj, 'status') and not usuario_obj.status:
+            if hasattr(usuario_obj, '_status') and not usuario_obj._status:
                 return False, FormatadorCLI.erro("Acesso negado: Usuário inativo.")
             
             # 6. SESSÃO: Determina o tipo e salva
@@ -72,7 +72,7 @@ class SistemaAutenticacao:
             return FormatadorCLI.aviso("Nenhum usuário logado")
         
         usuario = self.sessao.obter_usuario()
-        nome = usuario.nome if usuario else "Usuário"
+        nome = getattr(usuario, "nome", "Usuário") if usuario else "Usuário"
         
         self.sessao.limpar_sessao()
         
@@ -109,6 +109,9 @@ class SistemaAutenticacao:
         if usuario:
             # Pegamos o nome da classe do objeto (Gestor, Secretario, etc.)
             return usuario.__class__.__name__.upper()
+        tipo = self.sessao.obter_tipo_usuario()
+        if tipo:
+            return str(tipo).upper()
         return "DESCONECTADO"
     
     def _criar_objeto_usuario(self, dados_usuario: dict) -> Optional[Usuario]:

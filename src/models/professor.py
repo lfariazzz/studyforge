@@ -183,11 +183,12 @@ class Professor(Usuario):
         nomes_turmas = [turma.nome for turma in self._turmas_associadas]
         turmas_str = ", ".join(nomes_turmas) if nomes_turmas else "Nenhuma turma alocada"
         status_conta = "Ativa" if self._status else "Inativa"
+        separador = "=" * 40
 
         return (
-            f"\n" + "="*40 + "\n"
+            f"\n{separador}\n"
             f"          PERFIL DO PROFESSOR\n"
-            f"="*40 + "\n"
+            f"{separador}\n"
             f"Nome: {self.nome}\n"
             f"RF: {self.registro_funcional}\n"
             f"Titulação: {self.titulacao}\n"
@@ -195,7 +196,7 @@ class Professor(Usuario):
             f"E-mail: {self.email}\n"
             f"Turmas: {turmas_str}\n"
             f"Status: {status_conta}\n"
-            f"="*40
+            f"{separador}"
         )
 
     def lancar_nota(self, turma, aluno, valor, tipo, data_prova):
