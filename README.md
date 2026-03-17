@@ -4,7 +4,29 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 O **StudyForge** é uma plataforma de gestão educacional desenvolvida para otimizar os fluxos administrativos e pedagógicos de municípios. O sistema utiliza o paradigma de **Orientação a Objetos** para gerenciar hierarquias complexas de usuários e automação de demandas críticas.
+---
+## 🚀 Como Executar
 
+Siga estas etapas em ordem para garantir que o banco de dados e as dependências estejam prontos.
+
+### 1. Inicializar o Banco de Dados
+O primeiro passo é criar a estrutura do banco de dados SQLite. Execute o script de inicialização utilizando o modo de módulo do Python:
+
+```bash
+python -m src.database.init_db
+```
+
+### 2. Instalar Dependências
+A interface de linha de comando deste projeto utiliza a biblioteca Typer. Instale-a via pip:
+```bash
+pip install typer
+```
+### 3. Executar a CLI
+Com o banco inicializado e as bibliotecas instaladas, você pode rodar o programa principal.
+Importante: Sempre execute o comando a partir da raiz do projeto (/studyforge) para que os imports internos funcionem corretamente:
+```bash
+python -m src.main
+```
 ---
 
 ## 🚀 Principais Funcionalidades
@@ -32,19 +54,13 @@ Para detalhes sobre regras de negócio, diagramas UML e justificativas arquitetu
 
 ---
 
-## 💻 Como Executar (Em breve)
+# StudyForge 🛠️
 
-```bash
-# Clone o repositório
-git clone [https://github.com/lfariazzz/StudyForge-POO.git](https://github.com/lfariazzz/StudyForge-POO.git)
+Este projeto é uma ferramenta de linha de comando (CLI) desenvolvida em Python para gerenciamento de estudos. Siga os passos abaixo para configurar o ambiente e rodar a aplicação corretamente.
 
-# Acesse a pasta
-cd StudyForge-POO
+## 📋 Pré-requisitos
 
-# Execute o sistema (Após implementação do Core)
-python main.py
-```
----
+Antes de começar, você precisa ter o **Python 3.10 ou superior** instalado em sua máquina.
 
 ## 👥 Equipe de Desenvolvimento
 
